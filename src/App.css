@@ -1,0 +1,44 @@
+main {
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: 4rem 1.5rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  letter-spacing: 0.1em;
+}
+
+.subtitle {
+  margin: 0.25rem 0 2.5rem;
+  color: var(--muted);
+}
+
+/* The native file input is hidden; the label is the visible control. */
+.upload {
+  display: inline-block;
+  padding: 0.6rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.upload:hover {
+  border-color: var(--text);
+}
+
+.upload:has(input:disabled) {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.upload input {
+  display: none;
+}
+
+.result {
+  margin-top: 1.5rem;
+  font-family: var(--mono);
+  color: var(--muted);
+}
