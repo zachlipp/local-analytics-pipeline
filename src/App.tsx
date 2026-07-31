@@ -2,6 +2,7 @@ import { useState, type ChangeEvent } from 'react'
 import './App.css'
 
 import { countRows } from './example-query'
+import { DagUpload } from '@ui/DagUpload'
 
 type Status = 'idle' | 'loading' | 'error'
 
@@ -29,6 +30,8 @@ function App() {
     <main>
       <h1>LAP</h1>
       <p className="subtitle">Local Analytics Pipeline</p>
+
+			<DagUpload />
 
       <label className="upload">
         Upload a CSV to count the (non-header) rows

@@ -4,19 +4,37 @@ import { z } from "zod";
 export const semverRegex =
   /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
 
-const LoadNode = z.object({
-  kind: z.literal("load"),
+const VariableInput = z.object({
+  kind: z.literal("variable"),
+  name: z.string(),
+});
+
+// TODO: Validate on node names
+const NodeInput = z.object({
+  kind: z.literal("node"),
+  name: z.string(),
+});
+
+export const TransformInput = z.discriminatedUnion("kind", [
+  VariableInput,
+  NodeInput,
+]);
+
+const FileNode = z.object({
+  kind: z.literal("file"),
+  // TODO: Implement schema matching
+  schema: z.string().optional(),
   description: z.string().optional(),
 });
 
 const TransformNode = z.object({
   kind: z.literal("transform"),
-  inputs: z.array(z.string()).min(1),
+  inputs: z.array(TransformInput).min(1),
   query: z.string(),
 });
 
 export const NodeSchema = z.discriminatedUnion("kind", [
-  LoadNode,
+  FileNode,
   TransformNode,
 ]);
 
@@ -25,5 +43,6 @@ export const DagSchema = z.object({
   nodes: z.record(z.string(), NodeSchema),
 });
 
+export type TransformInput = z.infer<typeof TransformInput>;
 export type Node = z.infer<typeof NodeSchema>;
 export type Dag = z.infer<typeof DagSchema>;
