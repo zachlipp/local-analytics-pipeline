@@ -65,14 +65,6 @@ export function DagUpload({
           ))}
         </ul>
       </label>
-
-      {dag && (
-        <ul className="nodes">
-          {Object.entries(dag.nodes).map(([name, node]) => (
-            <DagNode key={name} name={name} node={node} />
-          ))}
-        </ul>
-      )}
     </>
   );
 }
