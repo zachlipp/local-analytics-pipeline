@@ -20,6 +20,8 @@
   --dag-shadow-hover:
     0 2px 4px rgb(8 6 13 / 8%), 0 8px 20px rgb(8 6 13 / 10%);
 
+  /* The edge tooltip is positioned against this box. */
+  position: relative;
   height: 70vh;
   margin: 1.5rem 0 0;
   border: 1px solid var(--border);
@@ -188,10 +190,67 @@
   stroke-width: 1.5;
 }
 
-.dag-viz .react-flow__edge:hover .react-flow__edge-path,
 .dag-viz .react-flow__edge.selected .react-flow__edge-path {
   stroke: var(--dag-accent);
   stroke-width: 2;
+}
+
+/* Bundle hover: every edge sharing a target lights up together, the rest
+   recede. There's no :hover rule here on purpose — one edge being hovered
+   has to restyle its siblings, which only the className can do. */
+.dag-viz .react-flow__edge.dag-edge-active .react-flow__edge-path {
+  stroke: var(--dag-accent);
+  stroke-width: 2.5;
+}
+
+.dag-viz .react-flow__edge.dag-edge-muted .react-flow__edge-path {
+  opacity: 0.25;
+}
+
+.dag-viz .react-flow__edge-path {
+  transition:
+    stroke 0.12s ease,
+    stroke-width 0.12s ease,
+    opacity 0.12s ease;
+}
+
+/* Tooltip --------------------------------------------------------------- */
+
+.dag-edge-tooltip {
+  position: absolute;
+  z-index: 10;
+  /* Offset from the cursor, and never a pointer target itself — sitting under
+     the mouse would end the very hover that spawned it. */
+  transform: translate(14px, 14px);
+  pointer-events: none;
+  max-width: 280px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--dag-surface);
+  box-shadow: var(--dag-shadow-hover);
+  color: var(--text);
+  font: 13px/1.45 var(--sans);
+}
+
+.dag-edge-tooltip-name {
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.dag-edge-tooltip-description {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.dag-edge-tooltip-io {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .dag-viz .react-flow__arrowhead polyline {
