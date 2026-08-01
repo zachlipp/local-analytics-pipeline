@@ -1,47 +1,18 @@
-import { useState, type ChangeEvent } from "react";
 import "./App.css";
 
-import { countRows } from "./example-query";
 import { DagUpload } from "@ui/DagUpload";
 
-type Status = "idle" | "loading" | "error";
+// Inlined at build time, so the sample pipeline renders on boot without a
+// network round-trip and without shipping data/ as a static asset.
+import sampleDag from "../data/schema.yaml?raw";
 
 function App() {
-  const [status, setStatus] = useState<Status>("idle");
-  const [fileName, setFileName] = useState<string>();
-  const [rowCount, setRowCount] = useState<number>();
-
-  async function handleChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFileName(file.name);
-    setRowCount(undefined);
-    setStatus("loading");
-    try {
-      setRowCount(await countRows(file));
-      setStatus("idle");
-    } catch (err) {
-      console.error(err);
-      setStatus("error");
-    }
-  }
-
   return (
     <main>
       <h1>LAP</h1>
       <p className="subtitle">Local Analytics Pipeline</p>
 
-      <DagUpload />
-
-      <p className="result" role="status">
-        {status === "loading"
-          ? `Counting rows in ${fileName}…`
-          : status === "error"
-            ? `Could not read ${fileName}`
-            : rowCount !== undefined
-              ? `${fileName}: ${rowCount.toLocaleString()} rows`
-              : "No file loaded yet."}
-      </p>
+      <DagUpload initialSource={sampleDag} />
     </main>
   );
 }

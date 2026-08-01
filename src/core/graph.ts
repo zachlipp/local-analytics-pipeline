@@ -1,4 +1,6 @@
-import type { Dag, TransformInput } from "./schema";
+/*
+
+import type { Dag } from "./schema";
 
 export function checkReferences(dag: Dag): string[] {
   const names = new Set(Object.keys(dag.nodes));
@@ -8,7 +10,7 @@ export function checkReferences(dag: Dag): string[] {
     switch (node.kind) {
       case "file":
         break; // no inputs
-      case "transform":
+      case "operation":
         for (const input of node.inputs) {
           errors.push(...checkInput(name, input, names));
         }
@@ -32,3 +34,4 @@ function checkInput(
         : [`Node '${name}' depends on '${input.name}', which doesn't exist`];
   }
 }
+*/

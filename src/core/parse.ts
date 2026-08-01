@@ -24,5 +24,6 @@ export function parseDag(text: string): ParseResult {
       ),
     };
   }
+  console.log("Loaded DAG!");
   return { ok: true, dag: result.data };
 }

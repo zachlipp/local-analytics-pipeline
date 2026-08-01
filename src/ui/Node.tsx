@@ -21,11 +21,7 @@ function NodeBody({ node }: { node: Node }) {
           <input type="file" accept=".csv,text/csv" />
         </label>
       );
-    case "transform":
-      return (
-        <p className="node-detail">
-          {node.inputs.map((input) => input.name).join(", ")}
-        </p>
-      );
+    case "operation_result":
+      return <p className="node-detail"></p>;
   }
 }

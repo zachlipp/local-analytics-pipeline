@@ -4,21 +4,11 @@ import { z } from "zod";
 export const semverRegex =
   /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
 
-const VariableInput = z.object({
-  kind: z.literal("variable"),
-  name: z.string(),
-});
-
 // TODO: Validate on node names
-const NodeInput = z.object({
+export const NodeInput = z.object({
   kind: z.literal("node"),
   name: z.string(),
 });
-
-export const TransformInput = z.discriminatedUnion("kind", [
-  VariableInput,
-  NodeInput,
-]);
 
 const FileNode = z.object({
   kind: z.literal("file"),
@@ -27,23 +17,41 @@ const FileNode = z.object({
   schema: z.string().optional(),
 });
 
-const TransformNode = z.object({
-  kind: z.literal("transform"),
+const UserInputNode = z.object({
+  kind: z.literal("user_input"),
   description: z.string(),
-  inputs: z.array(TransformInput).min(1),
+  // TODO: Does this make sense?
+  input: z.string().optional(),
+});
+
+const OperationResultNode = z.object({
+  kind: z.literal("operation_result"),
+  description: z.string(),
+  // TODO: Implement matching
+  operation_name: z.string(),
+});
+
+const OperationSchema = z.object({
+  description: z.string(),
+  // TODO - must be node names
+  inputs: z.array(z.string()),
   query: z.string(),
+  // TODO: Add constraints object
+  // constraints:
 });
 
 export const NodeSchema = z.discriminatedUnion("kind", [
   FileNode,
-  TransformNode,
+  UserInputNode,
+  OperationResultNode,
 ]);
 
 export const DagSchema = z.object({
+  pipeline_name: z.string(),
   version: z.string().regex(semverRegex, "invalid semver"),
   nodes: z.record(z.string(), NodeSchema),
+  operations: z.record(z.string(), OperationSchema),
 });
 
-export type TransformInput = z.infer<typeof TransformInput>;
 export type Node = z.infer<typeof NodeSchema>;
 export type Dag = z.infer<typeof DagSchema>;
