@@ -22,13 +22,14 @@ export const TransformInput = z.discriminatedUnion("kind", [
 
 const FileNode = z.object({
   kind: z.literal("file"),
+  description: z.string(),
   // TODO: Implement schema matching
   schema: z.string().optional(),
-  description: z.string().optional(),
 });
 
 const TransformNode = z.object({
   kind: z.literal("transform"),
+  description: z.string(),
   inputs: z.array(TransformInput).min(1),
   query: z.string(),
 });

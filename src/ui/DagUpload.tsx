@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { parseDag } from "@core/parse";
 import { checkReferences } from "@core/graph";
+import { DagNode } from "@ui/Node";
+import type { Dag } from "@core/schema";
 
 export function DagUpload() {
   const [messages, setMessages] = useState<string[]>([]);
+  const [dag, setDag] = useState<Dag>();
 
   async function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -12,6 +15,7 @@ export function DagUpload() {
     const result = parseDag(await file.text());
     if (!result.ok) {
       setMessages(result.errors);
+      setDag(undefined);
       return;
     }
     const dangling = checkReferences(result.dag);
@@ -20,13 +24,24 @@ export function DagUpload() {
         ? dangling
         : [`OK — ${Object.keys(result.dag.nodes).length} nodes`],
     );
+    setDag(dangling.length > 0 ? undefined : result.dag);
   }
 
   return (
-		<label className="upload">
-			Upload your pipeline definition (YAML, JSON)
+    <>
+			<label className="upload">
+				Upload your pipeline definition (YAML, JSON)
       <input type="file" accept=".yaml,.yml,.json" onChange={onChange} />
       <ul>{messages.map((m, i) => <li key={i}>{m}</li>)}</ul>
-		</label>
+			</label>
+
+      {dag && (
+        <ul className="nodes">
+          {Object.entries(dag.nodes).map(([name, node]) => (
+            <DagNode key={name} name={name} node={node} />
+          ))}
+        </ul>
+      )}
+    </>
   );
 }
