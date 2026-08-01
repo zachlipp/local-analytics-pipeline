@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import { parseDag } from "@core/parse";
-// import { checkReferences } from "@core/graph";
-import { DagNode } from "@ui/Node";
 import type { Dag } from "@core/schema";
 
 export function DagUpload({

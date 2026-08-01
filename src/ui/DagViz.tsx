@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -32,6 +32,23 @@ type DagNodeData = {
 
 type DagFlowNode = FlowNode<DagNodeData, "dagNode">;
 
+/**
+ * What the user has typed into each user_input node, keyed by node id.
+ *
+ * This rides beside the graph rather than inside node.data: keeping it out of
+ * the nodes means a keystroke doesn't churn the objects the layout effect
+ * watches, and the values survive a re-layout untouched.
+ */
+type InputStore = {
+  values: Record<string, string>;
+  setValue: (id: string, value: string) => void;
+};
+
+const InputContext = createContext<InputStore>({
+  values: {},
+  setValue: () => {},
+});
+
 export function DagViz({
   dag,
   direction = "LR",
@@ -61,11 +78,24 @@ function DagFlow({ dag, direction }: { dag: Dag; direction: Direction }) {
   // browser has told us how big they are. `placed` hides that first frame.
   const [placed, setPlaced] = useState(false);
 
+  // Seeded from the `input` field on each user_input node, so a pipeline can
+  // ship defaults.
+  const [values, setValues] = useState(graph.initialValues);
+
   useEffect(() => {
     setPlaced(false);
     setNodes(graph.nodes);
     setEdges(graph.edges);
+    setValues(graph.initialValues);
   }, [graph, setNodes, setEdges]);
+
+  const inputs = useMemo<InputStore>(
+    () => ({
+      values,
+      setValue: (id, value) => setValues((vs) => ({ ...vs, [id]: value })),
+    }),
+    [values],
+  );
 
   const nodesInitialized = useNodesInitialized();
   const { fitView } = useReactFlow();
@@ -108,20 +138,22 @@ function DagFlow({ dag, direction }: { dag: Dag; direction: Direction }) {
 
   return (
     <div className="dag-viz" style={{ opacity: placed ? 1 : 0 }}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        nodeTypes={nodeTypes}
-        defaultEdgeOptions={defaultEdgeOptions}
-        // The graph renders a pipeline definition; it isn't an editor.
-        nodesConnectable={false}
-        deleteKeyCode={null}
-      >
-        <Background variant={BackgroundVariant.Dots} gap={18} size={1.4} />
-        <Controls showInteractive={false} />
-      </ReactFlow>
+      <InputContext.Provider value={inputs}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          nodeTypes={nodeTypes}
+          defaultEdgeOptions={defaultEdgeOptions}
+          // The graph renders a pipeline definition; it isn't an editor.
+          nodesConnectable={false}
+          deleteKeyCode={null}
+        >
+          <Background variant={BackgroundVariant.Dots} gap={18} size={1.4} />
+          <Controls showInteractive={false} />
+        </ReactFlow>
+      </InputContext.Provider>
     </div>
   );
 }
@@ -134,10 +166,13 @@ const defaultEdgeOptions = {
 } as const;
 
 function DagFlowNodeView({
+  id,
   data,
   sourcePosition,
   targetPosition,
 }: NodeProps<DagFlowNode>) {
+  const { values, setValue } = useContext(InputContext);
+
   return (
     <div className="dag-node" data-kind={data.kind}>
       <Handle type="target" position={targetPosition ?? Position.Left} />
@@ -145,6 +180,18 @@ function DagFlowNodeView({
       <div className="dag-node-kind">{data.kind}</div>
       {data.description && (
         <div className="dag-node-description">{data.description}</div>
+      )}
+      {data.kind === "user_input" && (
+        <input
+          // nodrag: without it React Flow swallows the mousedown and you
+          // can't place the caret or select text.
+          className="dag-node-input nodrag"
+          type="text"
+          value={values[id] ?? ""}
+          placeholder={data.name}
+          aria-label={data.name}
+          onChange={(e) => setValue(id, e.target.value)}
+        />
       )}
       <Handle type="source" position={sourcePosition ?? Position.Right} />
     </div>
@@ -165,9 +212,19 @@ function measure(n: DagFlowNode) {
 function toFlowGraph(
   dag: Dag,
   direction: Direction,
-): { nodes: DagFlowNode[]; edges: FlowEdge[]; layoutEdges: LayoutEdge[] } {
+): {
+  nodes: DagFlowNode[];
+  edges: FlowEdge[];
+  layoutEdges: LayoutEdge[];
+  initialValues: Record<string, string>;
+} {
   const [sourcePosition, targetPosition] = handlePositions(direction);
   const dagEdges = constructEdges(dag);
+
+  const initialValues: Record<string, string> = {};
+  for (const node of Object.values(dag.nodes)) {
+    if (node.kind === "user_input") initialValues[node.id] = node.input ?? "";
+  }
 
   const nodes: DagFlowNode[] = Object.entries(dag.nodes).map(([name, node]) => ({
     id: node.id,
@@ -185,7 +242,7 @@ function toFlowGraph(
     target: e.to,
   }));
 
-  return { nodes, edges, layoutEdges: dagEdges };
+  return { nodes, edges, layoutEdges: dagEdges, initialValues };
 }
 
 /** Which side edges leave from and arrive at, for a given rank direction. */

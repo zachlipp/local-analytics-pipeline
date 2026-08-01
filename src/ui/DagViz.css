@@ -132,6 +132,32 @@
   font-size: 13.5px;
 }
 
+/* user_input nodes carry a live text box. It widens the node, which the
+   ResizeObserver picks up, so the graph re-flows to make room for it. */
+.dag-node-input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 8px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--text);
+  font: 13.5px/1.4 var(--mono);
+}
+
+.dag-node-input::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.dag-node-input:focus {
+  outline: none;
+  border-color: var(--dag-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dag-accent) 25%, transparent);
+}
+
 .dag-node .react-flow__handle {
   width: 8px;
   height: 8px;
