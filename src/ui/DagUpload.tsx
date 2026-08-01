@@ -4,9 +4,22 @@ import { parseDag } from "@core/parse";
 import { DagNode } from "@ui/Node";
 import type { Dag } from "@core/schema";
 
-export function DagUpload({ initialSource }: { initialSource?: string }) {
+export function DagUpload({
+  initialSource,
+  onDag,
+}: {
+  initialSource?: string;
+  /** Fires whenever the parsed DAG changes, so App can render it. */
+  onDag?: (dag: Dag | undefined) => void;
+}) {
   const [messages, setMessages] = useState<string[]>([]);
   const [dag, setDag] = useState<Dag>();
+
+  // Reporting the DAG from one effect rather than from each setDag() call
+  // means a new parse path can't forget to tell the parent about it.
+  useEffect(() => {
+    onDag?.(dag);
+  }, [dag, onDag]);
 
   // Load a DAG on mount, before the user has uploaded anything.
   useEffect(() => {

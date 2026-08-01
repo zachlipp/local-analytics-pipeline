@@ -1,3 +1,21 @@
+import type { Dag, Edge } from "./schema";
+import { uuid } from "@core/utils";
+
+export function constructEdges(dag: Dag): Edge[] {
+  const edges: Edge[] = [];
+  for (const [_, op] of Object.entries(dag.operations)) {
+    for (const inp of op.inputs) {
+      const edge: Edge = {
+        id: uuid(),
+        from: dag.nodes[inp].id,
+        to: dag.nodes[op.output].id,
+      };
+      edges.push(edge);
+    }
+  }
+  return edges;
+}
+
 /*
 
 import type { Dag } from "./schema";

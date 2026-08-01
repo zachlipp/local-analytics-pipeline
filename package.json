@@ -14,7 +14,9 @@
   },
   "test": "vitest",
   "dependencies": {
+    "@dagrejs/dagre": "^3.0.0",
     "@duckdb/duckdb-wasm": "^1.33.1-dev57.0",
+    "@xyflow/react": "^12.11.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "yaml": "^2.9.0",
