@@ -62,6 +62,7 @@ type EdgeGroup = {
   description: string;
   inputs: string[];
   output: string;
+  query: string;
 };
 
 /** Which bundle is under the cursor, and where to put the tooltip. */
@@ -274,8 +275,9 @@ function EdgeTooltip({
         <p className="dag-edge-tooltip-description">{group.description}</p>
       )}
       <div className="dag-edge-tooltip-io">
-        {group.inputs.join(", ")} <span aria-hidden="true">→</span>{" "}
-        {group.output}
+        <pre>
+          <code>{group.query}</code>
+        </pre>
       </div>
     </div>
   );
@@ -319,6 +321,7 @@ function toFlowGraph(
       description: op.description,
       inputs: op.inputs,
       output: op.output,
+      query: op.query,
     };
   }
 
