@@ -190,10 +190,9 @@
   stroke-width: 1.5;
 }
 
-.dag-viz .react-flow__edge.selected .react-flow__edge-path {
-  stroke: var(--dag-accent);
-  stroke-width: 2;
-}
+/* Deliberately no .selected rule: a click now pins the whole bundle, and
+   React Flow's per-edge selection highlight competed with it — one edge of
+   the group would stay lit on its own. */
 
 /* Bundle hover: every edge sharing a target lights up together, the rest
    recede. There's no :hover rule here on purpose — one edge being hovered

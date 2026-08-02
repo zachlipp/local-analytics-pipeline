@@ -117,32 +117,49 @@ function DagFlow({ dag, direction }: { dag: Dag; direction: Direction }) {
   );
 
   const [hover, setHover] = useState<EdgeHover | null>(null);
+  // A clicked bundle stays lit after the cursor leaves. It outranks hover, so
+  // moving over other edges can't steal the highlight while one is pinned.
+  const [pinned, setPinned] = useState<EdgeHover | null>(null);
+  const active = pinned ?? hover;
   const container = useRef<HTMLDivElement>(null);
 
   // Hovering one edge lights the whole bundle and dims the rest, so a fan-in
   // reads as the single operation it is. Derived rather than stored, to keep
-  // hover out of the edge state that onEdgesChange owns.
+  // this out of the edge state that onEdgesChange owns.
   const renderedEdges = useMemo(() => {
-    if (!hover) return edges;
+    if (!active) return edges;
     return edges.map((e) =>
-      e.target === hover.target
+      e.target === active.target
         ? { ...e, className: "dag-edge-active", zIndex: 1 }
         : { ...e, className: "dag-edge-muted" },
     );
-  }, [edges, hover]);
+  }, [edges, active]);
 
   // React Flow reports client coordinates; the tooltip is positioned inside
   // the canvas, so it needs them relative to that box.
-  function onEdgeHover(event: React.MouseEvent, edge: FlowEdge) {
+  function pointer(event: React.MouseEvent) {
     const box = container.current?.getBoundingClientRect();
-    setHover({
-      target: edge.target,
+    return {
       x: event.clientX - (box?.left ?? 0),
       y: event.clientY - (box?.top ?? 0),
-    });
+    };
   }
 
-  const hoveredGroup = hover ? graph.groups[hover.target] : undefined;
+  function onEdgeHover(event: React.MouseEvent, edge: FlowEdge) {
+    // While pinned the tooltip stays put; tracking the cursor would drag it
+    // away from the bundle it describes.
+    if (pinned) return;
+    setHover({ target: edge.target, ...pointer(event) });
+  }
+
+  // Clicking the same bundle again releases it, so the edge that pinned it is
+  // also the one that lets it go.
+  function onEdgeClick(event: React.MouseEvent, edge: FlowEdge) {
+    const at = { target: edge.target, ...pointer(event) };
+    setPinned((p) => (p?.target === edge.target ? null : at));
+  }
+
+  const hoveredGroup = active ? graph.groups[active.target] : undefined;
 
   const nodesInitialized = useNodesInitialized();
   const { fitView } = useReactFlow();
@@ -199,7 +216,10 @@ function DagFlow({ dag, direction }: { dag: Dag; direction: Direction }) {
           defaultEdgeOptions={defaultEdgeOptions}
           onEdgeMouseEnter={onEdgeHover}
           onEdgeMouseMove={onEdgeHover}
+          onEdgeClick={onEdgeClick}
           onEdgeMouseLeave={() => setHover(null)}
+          // Clicking empty canvas dismisses a pinned bundle.
+          onPaneClick={() => setPinned(null)}
           // The graph renders a pipeline definition; it isn't an editor.
           nodesConnectable={false}
           deleteKeyCode={null}
@@ -209,8 +229,8 @@ function DagFlow({ dag, direction }: { dag: Dag; direction: Direction }) {
         </ReactFlow>
       </InputContext.Provider>
 
-      {hover && hoveredGroup && (
-        <EdgeTooltip group={hoveredGroup} x={hover.x} y={hover.y} />
+      {active && hoveredGroup && (
+        <EdgeTooltip group={hoveredGroup} x={active.x} y={active.y} />
       )}
     </div>
   );
