@@ -4,40 +4,44 @@ import { uuid } from "@core/utils";
 export const semverRegex =
   /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
 
-const ObjectWithIdentifier = z.object({
+const Identified = z.object({
   id: z
     .string()
     .uuid()
     .default(() => uuid()),
 });
 
+export const Described = Identified.extend({
+  description: z.string(),
+});
+
 // TODO: Validate on node names
-export const NodeInput = ObjectWithIdentifier.extend({
+export const NodeInput = Identified.extend({
   kind: z.literal("node"),
   name: z.string(),
 });
 
-const FileNode = ObjectWithIdentifier.extend({
+const FileNode = Described.extend({
   kind: z.literal("file"),
-  description: z.string(),
   // TODO: Implement schema matching
   schema: z.string().optional(),
 });
 
-const UserInputNode = ObjectWithIdentifier.extend({
+const UserInputNode = Described.extend({
   kind: z.literal("user_input"),
-  description: z.string(),
   // TODO: Does this make sense?
   input: z.string().optional(),
 });
 
-const OperationResultNode = ObjectWithIdentifier.extend({
+const OperationResultNode = Described.extend({
   kind: z.literal("operation_result"),
-  description: z.string(),
 });
 
-const OperationSchema = ObjectWithIdentifier.extend({
-  description: z.string(),
+const WebRequestNode = Described.extend({
+  kind: z.literal("web_request"),
+});
+
+const OperationSchema = Described.extend({
   // TODO - must be node names
   inputs: z.array(z.string()),
   query: z.string(),
@@ -46,7 +50,7 @@ const OperationSchema = ObjectWithIdentifier.extend({
   // constraints:
 });
 
-const EdgeSchema = ObjectWithIdentifier.extend({
+const EdgeSchema = Identified.extend({
   // TODO: More info
   from: z.string().uuid(),
   to: z.string().uuid(),
@@ -56,6 +60,7 @@ export const NodeSchema = z.discriminatedUnion("kind", [
   FileNode,
   UserInputNode,
   OperationResultNode,
+  WebRequestNode,
 ]);
 
 export const DagSchema = z.object({
