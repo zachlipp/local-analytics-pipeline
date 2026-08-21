@@ -1,0 +1,66 @@
+/*
+ * One badge, both views. Colour is carried by --dag-status-colour so the dot
+ * and the text can't drift apart, and so a view can restyle the box without
+ * restating five colours.
+ */
+
+.dag-status {
+  --dag-status-colour: var(--muted);
+
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.1em 0.5em;
+  border: 1px solid color-mix(in srgb, var(--dag-status-colour) 40%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dag-status-colour) 10%, transparent);
+  color: var(--dag-status-colour);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.dag-status::before {
+  content: "";
+  width: 0.45em;
+  height: 0.45em;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+.dag-status[data-status="SUCCEEDED"] {
+  --dag-status-colour: #15803d;
+}
+
+.dag-status[data-status="NEEDS_INPUT"] {
+  --dag-status-colour: #b45309;
+}
+
+.dag-status[data-status="ERROR"] {
+  --dag-status-colour: #dc2626;
+}
+
+.dag-status[data-status="INVALID"] {
+  --dag-status-colour: #9333ea;
+}
+
+/* UNREACHED keeps the muted default: it's the absence of news. */
+
+@media (prefers-color-scheme: dark) {
+  .dag-status[data-status="SUCCEEDED"] {
+    --dag-status-colour: #4ade80;
+  }
+
+  .dag-status[data-status="NEEDS_INPUT"] {
+    --dag-status-colour: #fbbf24;
+  }
+
+  .dag-status[data-status="ERROR"] {
+    --dag-status-colour: #f87171;
+  }
+
+  .dag-status[data-status="INVALID"] {
+    --dag-status-colour: #c084fc;
+  }
+}

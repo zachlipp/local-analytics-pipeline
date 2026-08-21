@@ -6,7 +6,11 @@ export function DagNode({ name, node }: { name: string; node: Node }) {
     <li className="node" data-kind={node.kind}>
       <div className="node-name">{name}</div>
       <div className="node-kind">{node.kind}</div>
-      <div className="node-description">{node.description}</div>
+      <div className="node-description">{node.description}</div>(
+      {node.kind === "data_literal" && (
+        <div className="node-data">{JSON.stringify(node.data)}</div>
+      )}
+      )
       <NodeBody node={node} />
     </li>
   );

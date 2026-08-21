@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -29,32 +22,28 @@ import "./DagViz.css";
 
 import { constructEdges } from "@core/graph";
 import { layout, type Direction, type LayoutEdge } from "@core/layout";
+import { buildPipeline } from "@core/pipeline";
 import type { Dag, Node } from "@core/schema";
+import { nodeStatuses, type Status } from "@core/status";
+import { DataLiteral } from "./DataLiteral";
+import { useNodeResult, useRun } from "./RunState";
+import { SourceLink } from "./SourceLink";
+import { Spinner } from "./Spinner";
+import { StatusBadge } from "./StatusBadge";
+import { useFileUpload } from "./useFileUpload";
 
 type DagNodeData = {
   name: string;
   kind: Node["kind"];
   description: string;
+  literal?: Extract<Node, { kind: "data_literal" }>["data"];
+  /** Where a file node's file comes from, if the pipeline says. */
+  source?: string;
+  /** Injected at render time, not built with the node — it changes per run. */
+  status?: Status;
 };
 
 type DagFlowNode = FlowNode<DagNodeData, "dagNode">;
-
-/**
- * What the user has typed into each user_input node, keyed by node id.
- *
- * This rides beside the graph rather than inside node.data: keeping it out of
- * the nodes means a keystroke doesn't churn the objects the layout effect
- * watches, and the values survive a re-layout untouched.
- */
-type InputStore = {
-  values: Record<string, string>;
-  setValue: (id: string, value: string) => void;
-};
-
-const InputContext = createContext<InputStore>({
-  values: {},
-  setValue: () => {},
-});
 
 /** The operation behind one bundle of edges — everything sharing a target. */
 type EdgeGroup = {
@@ -97,23 +86,68 @@ function DagFlow({ dag, direction }: { dag: Dag; direction: Direction }) {
   // browser has told us how big they are. `placed` hides that first frame.
   const [placed, setPlaced] = useState(false);
 
-  // Seeded from the `input` field on each user_input node, so a pipeline can
-  // ship defaults.
-  const [values, setValues] = useState(graph.initialValues);
-
   useEffect(() => {
     setPlaced(false);
     setNodes(graph.nodes);
     setEdges(graph.edges);
-    setValues(graph.initialValues);
   }, [graph, setNodes, setEdges]);
 
-  const inputs = useMemo<InputStore>(
-    () => ({
-      values,
-      setValue: (id, value) => setValues((vs) => ({ ...vs, [id]: value })),
-    }),
-    [values],
+  // Status comes from the shared run store, so a file uploaded in the slides
+  // view is already reflected here. Keyed by name; the flow nodes carry ids,
+  // which is what statusById bridges.
+  const { results } = useRun();
+  const pipeline = useMemo(() => buildPipeline(dag), [dag]);
+  const statusById = useMemo(() => {
+    const byName = nodeStatuses(pipeline, results);
+    const byId = new Map<string, Status>();
+    for (const { name, node } of pipeline.nodes.values()) {
+      byId.set(node.id, byName.get(name) ?? "UNREACHED");
+    }
+    return byId;
+  }, [pipeline, results]);
+
+  // Unreached means blocked on something upstream, so hiding it leaves the
+  // work that can be done now plus the work already done. Default on: that's
+  // the view worth opening with.
+  const [showUnreached, setShowUnreached] = useState(false);
+  const unreachedCount = [...statusById.values()].filter(
+    (s) => s === "UNREACHED",
+  ).length;
+
+  // Nodes no edge touches at either end. They're part of the pipeline but sit
+  // apart from its flow, so the toolbar can drop them to tighten the graph.
+  const connected = useMemo(() => {
+    const ids = new Set<string>();
+    for (const e of graph.edges) {
+      ids.add(e.source);
+      ids.add(e.target);
+    }
+    return ids;
+  }, [graph.edges]);
+
+  const [showIsolated, setShowIsolated] = useState(true);
+  const isolatedCount = graph.nodes.length - connected.size;
+
+  // Both filters at once, so the node array is walked once and the layout
+  // below can ask the same question.
+  const visible = useCallback(
+    (id: string) =>
+      (showIsolated || connected.has(id)) &&
+      (showUnreached || statusById.get(id) !== "UNREACHED"),
+    [showIsolated, connected, showUnreached, statusById],
+  );
+
+  // `hidden` rather than dropping them from the array: React Flow keeps a
+  // hidden node's measurements, so toggling back doesn't cost a re-measure,
+  // and it already leaves them out of fitView's bounds.
+  const renderedNodes = useMemo(
+    () =>
+      nodes.map((n) => ({
+        ...n,
+        hidden: !visible(n.id),
+        data: { ...n.data, status: statusById.get(n.id) ?? "UNREACHED" },
+      })),
+    [nodes, visible, statusById],
   );
 
   const [hover, setHover] = useState<EdgeHover | null>(null);
@@ -166,7 +200,12 @@ function DagFlow({ dag, direction }: { dag: Dag; direction: Direction }) {
 
   // Rounded, because measured sizes are fractional and sub-pixel wobble would
   // otherwise re-trigger the layout effect forever.
-  const sizes = useMemo(() => nodes.map(measure), [nodes]);
+  // Hidden nodes are left out so dagre closes the space they'd otherwise hold
+  // open. Nothing dangles: an isolated node is by definition on no edge.
+  const sizes = useMemo(
+    () => nodes.filter((n) => visible(n.id)).map(measure),
+    [nodes, visible],
+  );
   const sizeKey = sizes.map((s) => `${s.id}:${s.width}x${s.height}`).join("|");
 
   // Runs once every node has been measured, and again whenever those
@@ -201,38 +240,59 @@ function DagFlow({ dag, direction }: { dag: Dag; direction: Direction }) {
   }, [placed, sizeKey, fitView]);
 
   return (
-    <div
-      className="dag-viz"
-      ref={container}
-      style={{ opacity: placed ? 1 : 0 }}
-    >
-      <InputContext.Provider value={inputs}>
-        <ReactFlow
-          nodes={nodes}
-          edges={renderedEdges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          nodeTypes={nodeTypes}
-          defaultEdgeOptions={defaultEdgeOptions}
-          onEdgeMouseEnter={onEdgeHover}
-          onEdgeMouseMove={onEdgeHover}
-          onEdgeClick={onEdgeClick}
-          onEdgeMouseLeave={() => setHover(null)}
-          // Clicking empty canvas dismisses a pinned bundle.
-          onPaneClick={() => setPinned(null)}
-          // The graph renders a pipeline definition; it isn't an editor.
-          nodesConnectable={false}
-          deleteKeyCode={null}
+    <>
+      <div className="dag-viz-toolbar">
+        <button
+          type="button"
+          className="dag-viz-toggle"
+          onClick={() => setShowUnreached((s) => !s)}
+          aria-pressed={!showUnreached}
+          disabled={unreachedCount === 0}
         >
-          <Background variant={BackgroundVariant.Dots} gap={18} size={1.4} />
-          <Controls showInteractive={false} />
-        </ReactFlow>
-      </InputContext.Provider>
+          {showUnreached ? "Hide" : "Show"} unreached nodes ({unreachedCount})
+        </button>
+        <button
+          type="button"
+          className="dag-viz-toggle"
+          onClick={() => setShowIsolated((s) => !s)}
+          aria-pressed={!showIsolated}
+          disabled={isolatedCount === 0}
+        >
+          {showIsolated ? "Hide" : "Show"} unconnected nodes ({isolatedCount})
+        </button>
+      </div>
 
-      {active && hoveredGroup && (
-        <EdgeTooltip group={hoveredGroup} x={active.x} y={active.y} />
-      )}
-    </div>
+      <div
+        className="dag-viz"
+        ref={container}
+        style={{ opacity: placed ? 1 : 0 }}
+      >
+          <ReactFlow
+            nodes={renderedNodes}
+            edges={renderedEdges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            nodeTypes={nodeTypes}
+            defaultEdgeOptions={defaultEdgeOptions}
+            onEdgeMouseEnter={onEdgeHover}
+            onEdgeMouseMove={onEdgeHover}
+            onEdgeClick={onEdgeClick}
+            onEdgeMouseLeave={() => setHover(null)}
+            // Clicking empty canvas dismisses a pinned bundle.
+            onPaneClick={() => setPinned(null)}
+            // The graph renders a pipeline definition; it isn't an editor.
+            nodesConnectable={false}
+            deleteKeyCode={null}
+          >
+            <Background variant={BackgroundVariant.Dots} gap={18} size={1.4} />
+            <Controls showInteractive={false} />
+          </ReactFlow>
+
+        {active && hoveredGroup && (
+          <EdgeTooltip group={hoveredGroup} x={active.x} y={active.y} />
+        )}
+      </div>
+    </>
   );
 }
 
@@ -249,15 +309,45 @@ function DagFlowNodeView({
   sourcePosition,
   targetPosition,
 }: NodeProps<DagFlowNode>) {
-  const { values, setValue } = useContext(InputContext);
+  // The uploaded file lives in the run store, not here: the slides view shows
+  // the same node, and the status badge is derived from the same fact.
+  const [result, report] = useNodeResult(id);
+  const { file, running: uploading, error } = result;
+  const { dragging, onChange, drop } = useFileUpload(report);
 
   return (
-    <div className="dag-node" data-kind={data.kind}>
+    <div className="dag-node" data-kind={data.kind} data-status={data.status}>
       <Handle type="target" position={targetPosition ?? Position.Left} />
       <div className="dag-node-name">{data.name}</div>
-      <div className="dag-node-kind">{data.kind}</div>
+      <div className="dag-node-kind">
+        {data.kind}
+        {data.status && <StatusBadge status={data.status} />}
+      </div>
       {data.description && (
         <div className="dag-node-description">{data.description}</div>
+      )}
+      {data.kind === "file" && (
+        <>
+          {data.source && (
+            <div className="dag-node-source">
+              <SourceLink href={data.source} />
+            </div>
+          )}
+          <label className="upload nodrag" data-dragging={dragging} {...drop}>
+            {uploading ? "Uploading" : dragging ? "Drop it" : "Upload or drop"}
+            {uploading && <Spinner label="Uploading" />}
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              disabled={uploading}
+              onChange={onChange}
+            />
+            {file && !uploading && (
+              <div className="dag-node-file">{file.name}</div>
+            )}
+            {error && <div className="dag-node-file-error">{error}</div>}
+          </label>
+        </>
       )}
       {data.kind === "user_input" && (
         <input
@@ -265,11 +355,16 @@ function DagFlowNodeView({
           // can't place the caret or select text.
           className="dag-node-input nodrag"
           type="text"
-          value={values[id] ?? ""}
+          value={result.value ?? ""}
           placeholder={data.name}
           aria-label={data.name}
-          onChange={(e) => setValue(id, e.target.value)}
+          onChange={(e) => report({ value: e.target.value })}
         />
+      )}
+      {data.kind === "data_literal" && data.literal && (
+        <div className="dag-node-data">
+          <DataLiteral data={data.literal} />
+        </div>
       )}
       <Handle type="source" position={sourcePosition ?? Position.Right} />
     </div>
@@ -318,16 +413,10 @@ function toFlowGraph(
   nodes: DagFlowNode[];
   edges: FlowEdge[];
   layoutEdges: LayoutEdge[];
-  initialValues: Record<string, string>;
   groups: Record<string, EdgeGroup>;
 } {
   const [sourcePosition, targetPosition] = handlePositions(direction);
   const dagEdges = constructEdges(dag);
-
-  const initialValues: Record<string, string> = {};
-  for (const node of Object.values(dag.nodes)) {
-    if (node.kind === "user_input") initialValues[node.id] = node.input ?? "";
-  }
 
   // Every edge into a node was produced by the operation that outputs it, so
   // grouping edges by target is the same thing as grouping them by operation.
@@ -353,7 +442,13 @@ function toFlowGraph(
       position: { x: 0, y: 0 },
       sourcePosition,
       targetPosition,
-      data: { name, kind: node.kind, description: node.description },
+      data: {
+        name,
+        kind: node.kind,
+        description: node.description,
+        literal: node.kind === "data_literal" ? node.data : undefined,
+        source: node.kind === "file" ? node.source : undefined,
+      },
     }),
   );
 
@@ -363,7 +458,7 @@ function toFlowGraph(
     target: e.to,
   }));
 
-  return { nodes, edges, layoutEdges: dagEdges, initialValues, groups };
+  return { nodes, edges, layoutEdges: dagEdges, groups };
 }
 
 /** Which side edges leave from and arrive at, for a given rank direction. */

@@ -1,5 +1,5 @@
 main {
-  max-width: 64rem;
+  max-width: 100rem;
   margin: 0 auto;
   padding: 4rem 1.5rem;
 }
@@ -35,6 +35,34 @@ h1 {
 
 .upload input {
   display: none;
+}
+
+/* Picks which frame renders below: the canvas or the step-by-step walk. */
+.view-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin: 2rem 0 0;
+}
+
+.view-toggle button {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.view-toggle button:hover {
+  border-color: var(--text);
+}
+
+.view-toggle button[aria-pressed="true"] {
+  border-color: var(--text);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--text);
 }
 
 /* Placeholder layout: a flat list of boxes until this becomes a real graph. */

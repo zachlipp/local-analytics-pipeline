@@ -1,0 +1,27 @@
+/*
+ * Shared by the canvas nodes and the slides, so this styles the list itself
+ * and nothing around it — the box, its size, and its scrolling belong to
+ * whichever view is rendering it.
+ */
+
+.dag-literal {
+  margin: 0;
+  padding-left: 1.1em;
+  text-align: left;
+  font-family: var(--mono);
+}
+
+/* A keyed row's fields sit under one bullet, so the row reads as one thing. */
+.dag-literal-fields {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dag-literal-key {
+  color: var(--muted);
+}
+
+.dag-literal-key::after {
+  content: ": ";
+}

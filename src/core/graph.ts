@@ -13,6 +13,14 @@ export function constructEdges(dag: Dag): Edge[] {
       edges.push(edge);
     }
   }
+  for (const node of Object.values(dag.nodes)) {
+    if ("input" in node) {
+      const from = dag.nodes[node.input];
+      if (!from) continue;
+      edges.push({ id: uuid(), from: from.id, to: node.id });
+    }
+  }
+
   return edges;
 }
 

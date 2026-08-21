@@ -1,11 +1,31 @@
 import { Dag, DagSchema } from "./schema";
 import { parse as parse_yaml } from "yaml";
 
-export type ParseResult =
+export type CustomParseResult =
   | { ok: true; dag: Dag }
   | { ok: false; errors: string[] };
 
-export function parseDag(text: string): ParseResult {
+import { z } from "zod";
+
+function parseErrors(result: z.ZodSafeParseResult<unknown>): void {
+  if (result.success) return;
+
+  for (const issue of result.error.issues) {
+    if (issue.code !== "invalid_union") {
+      console.log(`${issue.path.join(".")} — ${issue.message}`);
+      continue;
+    }
+
+    issue.errors.forEach((branchIssues: z.core.$ZodIssue[], i: number) => {
+      console.log(`branch ${i}:`);
+      for (const b of branchIssues) {
+        console.log(`  ${b.path.join(".")} — ${b.message}`);
+      }
+    });
+  }
+}
+
+export function parseDag(text: string): CustomParseResult {
   let raw: unknown;
   try {
     raw = parse_yaml(text);
@@ -17,6 +37,7 @@ export function parseDag(text: string): ParseResult {
   }
   const result = DagSchema.safeParse(raw);
   if (!result.success) {
+    console.error(parseErrors(result));
     return {
       ok: false,
       errors: result.error.issues.map(

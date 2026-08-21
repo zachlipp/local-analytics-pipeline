@@ -1,0 +1,127 @@
+/* The slide is a shrink-to-fit flex item; the grid can't outgrow it otherwise. */
+.dag-slide:has(.entry) {
+  width: 95%;
+  height: 90%;
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 1.25rem;
+}
+
+.entry-grid {
+  max-height: 40vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  text-align: left;
+}
+
+/* Separate, not collapse: collapsed borders don't travel with sticky cells. */
+.entry-grid table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.85rem;
+}
+
+.entry-grid th,
+.entry-grid td {
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  font-weight: normal;
+  white-space: nowrap;
+}
+
+/* One band for the row: a background per cell clips the label leaning over it. */
+.entry-grid thead {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
+}
+
+.entry-grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  border-bottom: 1px solid var(--text);
+  color: var(--muted);
+  vertical-align: bottom;
+}
+
+/* Weighted to beat `.entry-grid thead th`, which else flattens the z-index. */
+.entry-grid th.entry-frozen {
+  position: sticky;
+  z-index: 3;
+  box-sizing: border-box;
+  width: 18rem;
+  min-width: 18rem;
+  max-width: 18rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.entry-grid thead th.entry-corner {
+  z-index: 4;
+  cursor: default;
+}
+
+/* Rotated so 20-odd focus areas fit across without a horizontal marathon. */
+.entry-grid th.entry-option {
+  height: 9rem;
+  min-width: 3rem;
+  padding: 0;
+  background: none;
+}
+
+/* Swung up from the cell's bottom-left, so a wrapped line never dips into it. */
+.entry-grid th.entry-option span {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 0.7rem;
+  width: 8rem;
+  transform: rotate(-45deg);
+  transform-origin: 0 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+  line-height: 1.2;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+
+.entry-grid td {
+  text-align: center;
+}
+
+.entry-grid input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  accent-color: var(--text);
+}
+
+.entry-grid tbody tr:hover th,
+.entry-grid tbody tr:hover td {
+  background: color-mix(in srgb, var(--text) 5%, var(--bg));
+}
+
+.entry-grid tbody tr[data-active="true"] th,
+.entry-grid tbody tr[data-active="true"] td {
+  background: color-mix(in srgb, var(--text) 10%, var(--bg));
+}
+
+.entry-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
