@@ -9,6 +9,14 @@ import {
 
 import type { Dag } from "@core/schema";
 import type { NodeResult } from "@core/status";
+import {
+  clearResults,
+  durable,
+  loadResults,
+  sameDurable,
+  saveResult,
+  type Persisted,
+} from "./persist";
 
 type RunStore = {
   /** Keyed by node id, so it survives renaming nothing and colliding never. */
@@ -48,6 +56,9 @@ export function RunProvider({
   // old ids came from.
   const parsed = useRef(dag);
 
+  // What IndexedDB already holds, so an unchanged node isn't rewritten.
+  const stored = useRef<Record<string, Persisted>>({});
+
   // Editing the pipeline keeps what the user handed over and forgets what the
   // last run made of it.
   useEffect(() => {
@@ -55,17 +66,59 @@ export function RunProvider({
     parsed.current = dag;
   }, [dag]);
 
+  useEffect(() => {
+    let live = true;
+    loadResults()
+      .then((saved) => {
+        if (!live) return;
+        stored.current = saved;
+        setResults((rs) => restore(rs, saved));
+      })
+      // A browser that won't give us storage is one that runs without it.
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    for (const [id, result] of Object.entries(results)) {
+      const next = durable(result);
+      if (sameDurable(next, stored.current[id])) continue;
+      stored.current[id] = next;
+      void saveResult(id, next).catch(() => {});
+    }
+  }, [results]);
+
   const store = useMemo<RunStore>(
     () => ({
       results,
       update: (id, patch) =>
         setResults((rs) => ({ ...rs, [id]: { ...rs[id], ...patch } })),
-      reset: () => setResults(seed(dag)),
+      reset: () => {
+        stored.current = {};
+        void clearResults().catch(() => {});
+        setResults(seed(dag));
+      },
     }),
     [results, dag],
   );
 
   return <RunContext.Provider value={store}>{children}</RunContext.Provider>;
+}
+
+// Saved work wins over the seeds, since a seed is only a default and anything
+// stored was put there by the user. Ids for nodes the pipeline no longer has
+// are ignored rather than deleted: renaming a node back should find its upload.
+function restore(
+  current: Record<string, NodeResult>,
+  saved: Record<string, Persisted>,
+): Record<string, NodeResult> {
+  const results = { ...current };
+  for (const [id, persisted] of Object.entries(saved)) {
+    results[id] = { ...results[id], ...persisted };
+  }
+  return results;
 }
 
 // Keeps what the user produced; drops tables, since the query that made them

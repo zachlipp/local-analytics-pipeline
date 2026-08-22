@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { uuid } from "@core/utils";
+import { stableUuid, uuid } from "@core/utils";
 
 // From semver.org
 export const semverRegex =
@@ -138,13 +138,23 @@ export const NodeSchema = z.discriminatedUnion("kind", [
   DataLiteralNode,
 ]);
 
-export const DagSchema = z.object({
-  pipeline_name: z.string(),
-  version: z.string().regex(semverRegex, "invalid semver"),
-  schemas: z.record(z.string(), TableSchema).default({}),
-  nodes: z.record(z.string(), NodeSchema),
-  operations: z.record(z.string(), OperationSchema),
-});
+export const DagSchema = z
+  .object({
+    pipeline_name: z.string(),
+    version: z.string().regex(semverRegex, "invalid semver"),
+    schemas: z.record(z.string(), TableSchema).default({}),
+    nodes: z.record(z.string(), NodeSchema),
+    operations: z.record(z.string(), OperationSchema),
+  })
+  // A node's name is the only handle on it that survives an edit, so the id is
+  // derived from it. Left random, every re-parse would orphan that node's
+  // upload in the run store and its row in IndexedDB.
+  .transform((dag) => {
+    for (const [name, node] of Object.entries(dag.nodes)) {
+      node.id = stableUuid(name);
+    }
+    return dag;
+  });
 
 export type Node = z.infer<typeof NodeSchema>;
 export type Dag = z.infer<typeof DagSchema>;
