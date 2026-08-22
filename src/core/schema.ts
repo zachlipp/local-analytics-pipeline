@@ -79,6 +79,8 @@ const WebRequestSpec = z.object({
 
 const WebRequestNode = Constrained.extend({
   kind: z.literal("web_request"),
+  // Names an entry in the top-level `schemas:` block, same as a file does.
+  schema: z.string().optional(),
   /**
    * Optional name of a node whose value parameterises this request. Unlike an
    * operation's inputs this is declared on the node itself, because there's no
@@ -115,6 +117,12 @@ const OperationSchema = Described.extend({
   output: z.string(),
 });
 
+// A named set of `column: TYPE` pairs. Nodes whose data arrives from outside
+// the pipeline have no query to infer a shape from, so they point at one of
+// these instead; everything an operation produces is inferred and never named
+// here.
+export const TableSchema = z.record(z.string(), z.string());
+
 const EdgeSchema = Identified.extend({
   // TODO: More info
   from: z.string().uuid(),
@@ -133,6 +141,7 @@ export const NodeSchema = z.discriminatedUnion("kind", [
 export const DagSchema = z.object({
   pipeline_name: z.string(),
   version: z.string().regex(semverRegex, "invalid semver"),
+  schemas: z.record(z.string(), TableSchema).default({}),
   nodes: z.record(z.string(), NodeSchema),
   operations: z.record(z.string(), OperationSchema),
 });
@@ -144,3 +153,4 @@ export type WebRequestNode = Extract<Node, { kind: "web_request" }>;
 export type DataEntryNode = Extract<Node, { kind: "data_entry" }>;
 export type DataLiteralNode = Extract<Node, { kind: "data_literal" }>;
 export type Operation = z.infer<typeof OperationSchema>;
+export type Schemas = Dag["schemas"];

@@ -71,16 +71,22 @@ export function ancestors(pipeline: Pipeline, target: string): Set<string> {
  * in declaration order, and a row missing one gets an empty cell.
  */
 export function literalCsv(node: DataLiteralNode): string {
-  const rows: CsvRow[] = node.data.map((row) =>
-    typeof row === "string" ? { [node.column]: row } : row,
-  );
+  return toCsv(literalColumns(node), literalRows(node));
+}
 
+// The header a literal produces: its keys unioned, in declaration order.
+export function literalColumns(node: DataLiteralNode): string[] {
   const columns: string[] = [];
-  for (const row of rows) {
+  for (const row of literalRows(node)) {
     for (const key of Object.keys(row)) {
       if (!columns.includes(key)) columns.push(key);
     }
   }
+  return columns.length > 0 ? columns : [node.column];
+}
 
-  return toCsv(columns.length > 0 ? columns : [node.column], rows);
+function literalRows(node: DataLiteralNode): CsvRow[] {
+  return node.data.map((row) =>
+    typeof row === "string" ? { [node.column]: row } : row,
+  );
 }

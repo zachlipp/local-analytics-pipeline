@@ -8,6 +8,7 @@ function node(fields: Record<string, unknown> = {}): WebRequestNode {
   return NodeSchema.parse({
     kind: "web_request",
     description: "",
+    input: "year",
     ...fields,
   }) as WebRequestNode;
 }

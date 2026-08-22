@@ -37,12 +37,12 @@ export function checkRequiredColumns(
   return `${quoted(name)} ${needs}. ${has}`;
 }
 
-function quoted(value: string): string {
+export function quoted(value: string): string {
   return `“${value}”`;
 }
 
 // Oxford comma: these get read out loud to people who did not ask for SQL.
-function list(values: string[]): string {
+export function list(values: string[]): string {
   const quotedValues = values.map(quoted);
   if (quotedValues.length <= 2) return quotedValues.join(" and ");
   const last = quotedValues[quotedValues.length - 1];

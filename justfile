@@ -1,4 +1,4 @@
-default: tc t
+default: tc t v
 
 d:
 	npm run dev
@@ -8,6 +8,9 @@ tc:
 
 t:
 	npm run test
+
+v:
+	npm run validate
 
 b:
 	npm run build

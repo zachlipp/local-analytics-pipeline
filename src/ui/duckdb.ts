@@ -1,3 +1,11 @@
+import {
+  createEmpty,
+  describeQuery,
+  parseSql,
+  quote,
+  type Engine,
+  type Row,
+} from "@core/engine";
 import * as duckdb from "@duckdb/duckdb-wasm";
 import mvp_wasm from "@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm?url";
 import mvp_worker from "@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js?url";
@@ -112,13 +120,18 @@ export function forgetTable(table: string) {
   loaded.delete(table);
 }
 
-export type Row = Record<string, string>;
+export type { Row };
 
-/**
- * Node names come from an uploaded file, so they reach SQL as a quoted
- * identifier — doubling any embedded quote, which is the one escape that
- * matters inside one.
- */
-export function quote(identifier: string): string {
-  return `"${identifier.replace(/"/g, '""')}"`;
-}
+export { quote };
+
+// The port, for anything that shouldn't care whether it's talking to wasm.
+// The functions above keep their own caching, so this only adapts names.
+export const wasmEngine: Engine = {
+  loadCsv,
+  query: queryRows,
+  columns: tableColumns,
+  createEmpty: (table, columns) => createEmpty(queryRows, table, columns),
+  describeQuery: (sql) => describeQuery(queryRows, sql),
+  parse: (sql) => parseSql(queryRows, sql),
+  forget: forgetTable,
+};
