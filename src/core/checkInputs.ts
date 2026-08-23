@@ -10,6 +10,7 @@ import type { Dag, Operation } from "./schema";
 export type ProblemKind =
   | "undeclared"
   | "unknown_node"
+  | "not_a_table"
   | "unused"
   | "qualified"
   | "self_reference"
@@ -112,6 +113,18 @@ export function compareInputs(
             message: `${quoted(name)} reads ${quoted(table)}, which is not a node in this pipeline.`,
           },
     );
+  }
+
+  // D: the query reads a script that hands back a document rather than rows.
+  for (const table of referenced) {
+    const node = dag.nodes[table];
+    if (node?.kind !== "script" || node.schema) continue;
+    problems.push({
+      operation: name,
+      kind: "not_a_table",
+      names: [table],
+      message: `${quoted(name)} reads ${quoted(table)}, a script that returns a document. Give that script a \`schema:\` if its rows are meant to be queryable.`,
+    });
   }
 
   // C: an input was declared and the query never touches it.

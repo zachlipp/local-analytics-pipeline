@@ -93,6 +93,8 @@ export async function materializeShapes(
 
     try {
       const columns = nodeShape(node, dag.schemas);
+      // A script that returns a document has no table to stand up.
+      if (!columns) continue;
       await engine.createEmpty(name, columns);
       built.set(name, columns);
     } catch (cause) {
@@ -130,9 +132,13 @@ async function bind(
   return columns;
 }
 
-// The columns a node declares for itself. Throws for operation_result: asking
-// a node to declare what its own operation decides is how the two drift.
-export function nodeShape(node: Node, schemas: Schemas): Columns {
+// The columns a node declares for itself, or undefined when it has no table at
+// all. Throws for operation_result: asking a node to declare what its own
+// operation decides is how the two drift.
+export function nodeShape(
+  node: Node,
+  schemas: Schemas,
+): Columns | undefined {
   switch (node.kind) {
     case "data_literal":
       return allText(literalColumns(node));
@@ -150,8 +156,13 @@ export function nodeShape(node: Node, schemas: Schemas): Columns {
     }
 
     case "file":
-    case "web_request":
       return declaredShape(node.kind, node.schema, schemas);
+
+    // No schema means it returns a document, which has no columns.
+    case "script":
+      return node.schema
+        ? declaredShape(node.kind, node.schema, schemas)
+        : undefined;
 
     case "operation_result":
       throw new Error("No operation produces this node.");

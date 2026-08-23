@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Engine } from "@core/engine";
 import { buildPipeline } from "@core/pipeline";
 import { DagSchema, NodeSchema, type Node } from "@core/schema";
+import type { Columns } from "@core/shapes";
 import { materializeShapes, nodeShape } from "@core/shapes";
 import { nodeEngine, type NodeEngine } from "../src/node/engine";
 
@@ -9,9 +10,16 @@ function node(raw: Record<string, unknown>): Node {
   return NodeSchema.parse({ description: "", ...raw });
 }
 
+// Every node in these cases has a table; a shape-less one is asserted directly.
+function columnsOf(target: Node, schemas: Parameters<typeof nodeShape>[1]): Columns {
+  const shape = nodeShape(target, schemas);
+  if (!shape) throw new Error("expected this node to have columns");
+  return shape;
+}
+
 describe("nodeShape", () => {
   it("unions a literal's keys in declaration order", () => {
-    const shape = nodeShape(
+    const shape = columnsOf(
       node({
         kind: "data_literal",
         data: [{ ein: "1", name: "A" }, { ein: "2", note: "moved" }],
@@ -23,7 +31,7 @@ describe("nodeShape", () => {
   });
 
   it("names a bare-string literal's one column after the node", () => {
-    const shape = nodeShape(
+    const shape = columnsOf(
       node({ kind: "data_literal", column: "word", data: ["PTO", "PTA"] }),
       {},
     );
@@ -37,7 +45,7 @@ describe("nodeShape", () => {
   });
 
   it("gives an entry grid its key, its frozen columns, then its options", () => {
-    const shape = nodeShape(
+    const shape = columnsOf(
       node({
         kind: "data_entry",
         input: "source",
@@ -56,7 +64,7 @@ describe("nodeShape", () => {
   });
 
   it("takes a file's columns from the schema it names", () => {
-    const shape = nodeShape(
+    const shape = columnsOf(
       node({ kind: "file", schema: "grants" }),
       { grants: { ein: "VARCHAR", amount: "DOUBLE" } },
     );

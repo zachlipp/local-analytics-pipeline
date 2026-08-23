@@ -103,8 +103,10 @@ async function materialize(
     case "user_input":
       return engine.loadCsv(name, toCsv(["value"], [{ value: result.value ?? "" }]));
 
-    case "web_request":
-      if (!result.value) throw new Error(`${name} has not been fetched yet.`);
+    // A script with no schema returns a document, so there is nothing to load.
+    case "script":
+      if (!node.schema) return 0;
+      if (!result.value) throw new Error(`${name} has not been run yet.`);
       return engine.loadCsv(name, result.value);
 
     // Rebuilt from the source table and the committed marks rather than

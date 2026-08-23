@@ -53,7 +53,7 @@ export type Pipeline = {
 
 const INTERACTIVE_KINDS = new Set<Node["kind"]>([
   "file",
-  "web_request",
+  "script",
   "user_input",
   "data_entry",
 ]);

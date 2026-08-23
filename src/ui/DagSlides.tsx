@@ -2,10 +2,10 @@ import { useEffect, useMemo } from "react";
 
 import "./DagSlides.css";
 
-import { buildPipeline, type Pipeline, type PipelineStep } from "@core/pipeline";
-import type { Dag, Node, WebRequestNode } from "@core/schema";
-import { nodeStatuses, type NodeResult } from "@core/status";
-import { isConfigured, resolveRequest } from "@core/webRequest";
+import { buildPipeline, type Pipeline } from "@core/pipeline";
+import { scriptPath } from "@core/scripts";
+import type { Dag, Node, ScriptNode } from "@core/schema";
+import { nodeStatuses } from "@core/status";
 import { DataEntry } from "./DataEntry";
 import { DataLiteral } from "./DataLiteral";
 import type { Row } from "./duckdb";
@@ -16,7 +16,7 @@ import { Spinner } from "./Spinner";
 import { StatusBadge } from "./StatusBadge";
 import { useFileUpload } from "./useFileUpload";
 import { useRunPipeline } from "./useRunPipeline";
-import { useWebRequest, type RequestResult } from "./useWebRequest";
+import { useScript, type ScriptResult } from "./useScript";
 
 /**
  * The graph one node at a time, in dependency order.
@@ -103,7 +103,7 @@ export function DagSlides({ dag }: { dag: Dag }) {
           {step.node.description && (
             <p className="dag-slide-description">{step.node.description}</p>
           )}
-          {step.node.kind === "web_request" && step.node.input && (
+          {step.node.kind === "script" && step.node.input && (
             <div className="dag-slide-note">
               Uses <code>{step.node.input}</code>
             </div>
@@ -115,7 +115,6 @@ export function DagSlides({ dag }: { dag: Dag }) {
             key={step.node.id}
             node={step.node}
             name={step.name}
-            input={inputValue(pipeline, step, results)}
             pipeline={pipeline}
             dag={dag}
           />
@@ -148,20 +147,18 @@ type ControlProps = {
   node: Node;
   /** The node's name in the DAG — its table name, for anything loaded. */
   name: string;
-  /** The current value of this node's declared input, for web_request. */
-  input: string;
   pipeline: Pipeline;
   dag: Dag;
 };
 
 /** What this node wants from the user, if it wants anything. */
-function SlideControl({ node, name, input, pipeline, dag }: ControlProps) {
+function SlideControl({ node, name, pipeline, dag }: ControlProps) {
   switch (node.kind) {
     case "file":
       return <FileControl id={node.id} source={node.source} />;
 
-    case "web_request":
-      return <WebRequestControl node={node} input={input} table={name} />;
+    case "script":
+      return <ScriptControl node={node} table={name} />;
 
     case "user_input":
       return <UserInputControl id={node.id} label={node.description} />;
@@ -325,84 +322,63 @@ function FileControl({ id, source }: { id: string; source?: string }) {
   );
 }
 
-/**
- * Fire this node's request and show what came back.
- *
- * A node with neither a `request` nor a `script` has nothing to fire, so the
- * button says so rather than pretending — that's every web_request node in a
- * pipeline written before those fields existed.
- */
-function WebRequestControl({
+// Run this node's script and show what came back.
+function ScriptControl({
   node,
-  input,
   table,
 }: {
-  node: WebRequestNode;
-  input: string;
-  /** The node's name, which is also the table its CSV lands in. */
+  node: ScriptNode;
+  // The node's name, which is also the table its rows land in.
   table: string;
 }) {
   const [, report] = useNodeResult(node.id);
-  const { running, error, result, run } = useWebRequest(node, table, report);
-  const configured = isConfigured(node);
+  const { running, error, result, run } = useScript(node, table, report);
 
   return (
     <>
       <button
         className="dag-slide-action"
         type="button"
-        onClick={() => void run(input)}
-        disabled={running || !configured}
+        onClick={() => void run()}
+        disabled={running}
       >
-        {running ? <Spinner label="Fetching" /> : <RefreshIcon />}
-        {running ? "Fetching" : result ? "Refresh" : "Fetch"}
+        {running ? <Spinner label="Running" /> : <RefreshIcon />}
+        {running ? "Running" : result ? "Run again" : "Run"}
       </button>
 
-      {!configured && (
-        <div className="dag-slide-note">
-          No request or script defined for this node.
-        </div>
-      )}
-      {node.request && (
-        <div className="dag-slide-note dag-slide-url">
-          {resolveRequest(node, input)?.url}
-        </div>
-      )}
-      {result && <RequestSummary result={result} />}
+      <div className="dag-slide-note">
+        <code>{scriptPath(node.src)}</code>
+        {node.network && " · makes external requests"}
+      </div>
+      {result && <ScriptSummary result={result} />}
       {error && <div className="dag-slide-error">{error}</div>}
     </>
   );
 }
 
 /** Enough of the result to see it worked, not the whole payload. */
-function RequestSummary({ result }: { result: RequestResult }) {
-  const { response, value, table, rows, loadError } = result;
+function ScriptSummary({ result }: { result: ScriptResult }) {
+  const { table, rows, document } = result;
   return (
     <div className="dag-slide-note">
-      {response !== undefined && (
-        <div>{response.length} characters received</div>
-      )}
       {rows !== undefined && (
         <div>
           {rows} rows loaded into <code>{table}</code>
         </div>
       )}
-      {loadError && <div className="dag-slide-error">{loadError}</div>}
-      {value !== undefined && (
-        <pre className="dag-slide-result">{preview(value)}</pre>
+      {document && (
+        <>
+          <div>
+            {document.filename} · {document.body.length} characters
+          </div>
+          <pre className="dag-slide-result">{preview(document.body)}</pre>
+        </>
       )}
     </div>
   );
 }
 
-/** Scripts can return anything, including something JSON won't take. */
-function preview(value: unknown): string {
-  let text: string;
-  try {
-    text = JSON.stringify(value, null, 2) ?? String(value);
-  } catch {
-    text = String(value);
-  }
+function preview(text: string): string {
   return text.length > 600 ? `${text.slice(0, 600)}…` : text;
 }
 
@@ -444,21 +420,3 @@ function RefreshIcon() {
   );
 }
 
-/**
- * The current value of the node this step declares as its input.
- *
- * Only the kinds the user fills in have a value to give yet — a typed string
- * or an uploaded file's text. An input naming an operation_result resolves to
- * "" until there's a runner to produce one.
- */
-function inputValue(
-  pipeline: Pipeline,
-  step: PipelineStep,
-  results: Record<string, NodeResult>,
-): string {
-  if (step.node.kind !== "web_request" || !step.node.input) return "";
-  const source = pipeline.nodes.get(step.node.input)?.node;
-  if (!source) return "";
-  const result = results[source.id];
-  return result?.value ?? result?.file?.text ?? "";
-}

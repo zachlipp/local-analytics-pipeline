@@ -6,11 +6,13 @@ import {
   type InputProblem,
   type ProblemKind,
 } from "@core/checkInputs";
+import { checkReads, type ReadProblem } from "@core/checkReads";
 import { buildPipeline } from "@core/pipeline";
 import { DagSchema } from "@core/schema";
 import { checkSchemas, type SchemaError } from "@core/schemaErrors";
 import { materializeShapes, type ShapeIssue } from "@core/shapes";
 import { nodeEngine } from "./engine";
+import { missingScripts, type MissingScript } from "./scripts";
 
 const DEFAULT_PATH = "data/schema.yaml";
 
@@ -103,11 +105,17 @@ async function main(): Promise<number> {
     const sql = report.issues.filter((issue) => issue.operation);
     const nodeSchemas = report.issues.filter((issue) => !issue.operation);
     const schemaErrors = checkSchemas(dag.schemas);
+    const scripts = missingScripts(dag);
+    const reads = checkReads(dag, report.built);
     const byKind = (...kinds: ProblemKind[]) =>
       drifted.filter((problem) => kinds.includes(problem.kind));
 
     const problemCount =
-      report.issues.length + drifted.length + schemaErrors.length;
+      report.issues.length +
+      drifted.length +
+      schemaErrors.length +
+      scripts.length +
+      reads.length;
     const blockedNames = report.blocked.map(
       (issue) => issue.operation ?? issue.node,
     );
@@ -129,7 +137,9 @@ async function main(): Promise<number> {
     group("SQL Syntax Errors", sql.map(fromShape), verbose);
     group("Schemas", nodeSchemas.map(fromShape), verbose);
     group("Schema Errors", schemaErrors.map(fromSchema), verbose);
-    group("Undeclared Inputs", byKind("undeclared", "unknown_node").map(fromInput), verbose);
+    group("Missing Scripts", scripts.map(fromScript), verbose);
+    group("Script Inputs", reads.map(fromReads), verbose);
+    group("Undeclared Inputs", byKind("undeclared", "unknown_node", "not_a_table").map(fromInput), verbose);
     group("Unused Declarations", byKind("unused").map(fromInput), verbose);
     group("Other", byKind("qualified", "self_reference", "walker").map(fromInput), verbose);
 
@@ -165,6 +175,23 @@ function fromShape(issue: ShapeIssue): Finding {
     subject: issue.operation ?? issue.node,
     summary: firstLine(issue.message),
     detail: issue.message,
+  };
+}
+
+function fromScript(missing: MissingScript): Finding {
+  return {
+    subject: missing.node,
+    summary: `No script at ${missing.path}`,
+    detail: `This node names \`${missing.src}\`, so there has to be a module at ${missing.path}. Create it, or point the node at one that exists.`,
+  };
+}
+
+function fromReads(problem: ReadProblem): Finding {
+  const names = problem.missing.join(", ");
+  return {
+    subject: problem.node,
+    summary: `${problem.input} has no ${names}`,
+    detail: `This node reads ${names} from \`${problem.input}\`, which has: ${problem.available.join(", ")}.\nFix the name in \`reads:\`, and in the script beside it, or add the column upstream.`,
   };
 }
 

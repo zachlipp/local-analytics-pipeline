@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { stableUuid, uuid } from "@core/utils";
+import { expandOptionSets, OptionSets } from "./optionSets";
+import { SCRIPT_NAME } from "./scripts";
 
 // From semver.org
 export const semverRegex =
@@ -55,7 +57,8 @@ const UserDataEntryNode = Constrained.extend({
   key: z.string(),
   // Columns pinned to the left of the grid, in order. Defaults to the key.
   frozen: z.array(z.string()).default([]),
-  // One checkbox column each, in the order they appear.
+  // One checkbox column each, in the order they appear. Written inline or as
+  // the name of an option set, which is expanded to this before parsing.
   options: z.array(z.string()),
 });
 
@@ -63,43 +66,25 @@ const OperationResultNode = Constrained.extend({
   kind: z.literal("operation_result"),
 });
 
-/**
- * The declarative half of a web_request node: enough to fetch a URL without
- * any code at all, which is what most of these need.
- *
- * `{{input}}` in the url or body is replaced with the value of the node named
- * by `input`, so one request can be parameterised without a script.
- */
-const WebRequestSpec = z.object({
-  url: z.string(),
-  method: z.enum(["GET", "POST"]).default("GET"),
-  headers: z.record(z.string(), z.string()).default({}),
-  body: z.string().optional(),
-});
-
-const WebRequestNode = Constrained.extend({
-  kind: z.literal("web_request"),
-  // Names an entry in the top-level `schemas:` block, same as a file does.
-  schema: z.string().optional(),
-  /**
-   * Optional name of a node whose value parameterises this request. Unlike an
-   * operation's inputs this is declared on the node itself, because there's no
-   * operation here to hang it on — the fetch *is* the operation.
-   */
+// A node whose value comes from JavaScript in this project rather than from a
+// file, a query, or the user. `src` names a module under src/nodes/scripts.
+const ScriptNode = Constrained.extend({
+  kind: z.literal("script"),
+  src: z
+    .string()
+    .regex(SCRIPT_NAME, "must be a bare script name, like `geocode`"),
+  // The node whose rows the script is handed.
   input: z.string(),
-  request: WebRequestSpec.optional(),
-  /**
-   * Optional JavaScript, run on the response.
-   *
-   * The body of an async function receiving `{ input, response }` and
-   * returning the node's value; with no `request` above it, it's on its own to
-   * produce one. It runs in a sandboxed iframe rather than in the page — see
-   * ui/sandbox.ts for what that does and doesn't buy.
-   *
-   * Both fields are optional and a node with neither is simply unconfigured,
-   * which is what every web_request node was before this existed.
-   */
-  script: z.string().optional(),
+  // Input columns the script reads, checked against that node's real shape
+  // before anything runs. Nothing requires the list to be complete: a column
+  // left out of it is simply unchecked.
+  reads: z.array(z.string()).default([]),
+  // Declared when the script returns rows, so they can be loaded and queried.
+  // Omitted when it returns a document, which has no columns and no table.
+  schema: z.string().optional(),
+  // Recorded by hand, for a reader who wants to know what leaves the machine.
+  // Nothing verifies it.
+  network: z.boolean().default(false),
 });
 
 const DataLiteralRow = z.record(z.string(), z.string());
@@ -134,14 +119,15 @@ export const NodeSchema = z.discriminatedUnion("kind", [
   UserInputNode,
   UserDataEntryNode,
   OperationResultNode,
-  WebRequestNode,
+  ScriptNode,
   DataLiteralNode,
 ]);
 
-export const DagSchema = z
+const Document = z
   .object({
     pipeline_name: z.string(),
     version: z.string().regex(semverRegex, "invalid semver"),
+    option_sets: OptionSets.default({}),
     schemas: z.record(z.string(), TableSchema).default({}),
     nodes: z.record(z.string(), NodeSchema),
     operations: z.record(z.string(), OperationSchema),
@@ -156,10 +142,20 @@ export const DagSchema = z
     return dag;
   });
 
+// Option sets are spread before anything else looks at the document, so the
+// rest of the pipeline only ever sees the columns they expand to.
+export const DagSchema = z.preprocess(
+  (raw, ctx) =>
+    expandOptionSets(raw, (path, message) =>
+      ctx.addIssue({ code: "custom", path, message, input: raw }),
+    ),
+  Document,
+);
+
 export type Node = z.infer<typeof NodeSchema>;
 export type Dag = z.infer<typeof DagSchema>;
 export type Edge = z.infer<typeof EdgeSchema>;
-export type WebRequestNode = Extract<Node, { kind: "web_request" }>;
+export type ScriptNode = Extract<Node, { kind: "script" }>;
 export type DataEntryNode = Extract<Node, { kind: "data_entry" }>;
 export type DataLiteralNode = Extract<Node, { kind: "data_literal" }>;
 export type Operation = z.infer<typeof OperationSchema>;
