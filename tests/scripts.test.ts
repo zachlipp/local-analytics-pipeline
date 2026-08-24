@@ -141,7 +141,76 @@ describe("checkReads", () => {
   it("reports a column the input table does not have", () => {
     const built = new Map([["source", { ein: "VARCHAR", zip: "VARCHAR" }]]);
     expect(checkReads(graph, built)).toEqual([
-      { node: "reader", input: "source", missing: ["zipcode"], available: ["ein", "zip"] },
+      {
+        node: "reader",
+        input: "source",
+        field: "reads",
+        missing: ["zipcode"],
+        available: ["ein", "zip"],
+      },
+    ]);
+  });
+
+  const grid = (raw: Record<string, unknown>) =>
+    dag({
+      source: { kind: "operation_result", description: "" },
+      grid: {
+        kind: "data_entry",
+        description: "",
+        input: "source",
+        key: "ein",
+        frozen: ["name"],
+        options: ["arts"],
+        ...raw,
+      },
+    });
+
+  it("reports a column an entry grid's link template names", () => {
+    const built = new Map([["source", { ein: "VARCHAR", name: "VARCHAR" }]]);
+    const links = { name: "https://example.com/?q={name} {zipcode}" };
+    expect(checkReads(grid({ links }), built)).toEqual([
+      {
+        node: "grid",
+        input: "source",
+        field: "links",
+        missing: ["zipcode"],
+        available: ["ein", "name"],
+      },
+    ]);
+  });
+
+  it("reports an entry grid's key and pinned columns separately", () => {
+    const built = new Map([["source", { ein: "VARCHAR", name: "VARCHAR" }]]);
+    expect(
+      checkReads(grid({ key: "id", frozen: ["organization_name"] }), built),
+    ).toEqual([
+      {
+        node: "grid",
+        input: "source",
+        field: "key",
+        missing: ["id"],
+        available: ["ein", "name"],
+      },
+      {
+        node: "grid",
+        input: "source",
+        field: "frozen",
+        missing: ["organization_name"],
+        available: ["ein", "name"],
+      },
+    ]);
+  });
+
+  it("does not report a grid's key twice when frozen defaults to it", () => {
+    const built = new Map([["source", { name: "VARCHAR" }]]);
+    expect(checkReads(grid({ frozen: [] }), built)).toEqual([
+      {
+        node: "grid",
+        input: "source",
+        field: "key",
+        missing: ["ein"],
+        available: ["name"],
+      },
     ]);
   });
 

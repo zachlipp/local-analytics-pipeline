@@ -1,14 +1,32 @@
 import { toCsv, type CsvRow } from "./csv";
 import type { DataEntryNode } from "./schema";
 
-// cells line up with the node's frozen columns.
-export type EntryRecord = { key: string; cells: string[] };
+// cells line up with the node's frozen columns; links are keyed by column name
+// and only present for a cell whose template resolved to something.
+export type EntryRecord = {
+  key: string;
+  cells: string[];
+  links?: Record<string, string>;
+};
 
 // The mark a checked option carries in the CSV.
 const MARK = "x";
 
+// `{column}` in an href template.
+const FIELD = /\{([^{}]+)\}/g;
+
 export function frozenColumns(node: DataEntryNode): string[] {
   return node.frozen.length > 0 ? node.frozen : [node.key];
+}
+
+// Every input column this node's link templates interpolate, so they can be
+// checked against that table's real shape before anything renders.
+export function linkColumns(node: DataEntryNode): string[] {
+  const columns = new Set<string>();
+  for (const template of Object.values(node.links)) {
+    for (const [, column] of template.matchAll(FIELD)) columns.add(column.trim());
+  }
+  return [...columns];
 }
 
 export function toRecords(
@@ -19,7 +37,36 @@ export function toRecords(
   return rows.map((row, i) => ({
     key: row[node.key] ?? String(i),
     cells: frozen.map((column) => row[column] ?? ""),
+    links: recordLinks(node, row),
   }));
+}
+
+function recordLinks(
+  node: DataEntryNode,
+  row: Record<string, string>,
+): Record<string, string> | undefined {
+  const links: Record<string, string> = {};
+  for (const [column, template] of Object.entries(node.links)) {
+    const href = resolveLink(template, row);
+    if (href) links[column] = href;
+  }
+  return Object.keys(links).length > 0 ? links : undefined;
+}
+
+// Values are URL-encoded, the template around them is not. A row where none of
+// the named columns has a value gets no link rather than an empty search.
+function resolveLink(
+  template: string,
+  row: Record<string, string>,
+): string | undefined {
+  let found = false;
+  const href = template.replace(FIELD, (_, column: string) => {
+    const value = row[column.trim()];
+    if (value === undefined || value === null || value === "") return "";
+    found = true;
+    return encodeURIComponent(String(value));
+  });
+  return found ? href : undefined;
 }
 
 // One row per record, one column per option, matching the marked-up CSVs this

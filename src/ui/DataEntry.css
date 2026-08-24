@@ -67,6 +67,17 @@
   cursor: pointer;
 }
 
+/* Inherits the cell's colour: the active row is the emphasis, not the link. */
+.entry-grid .entry-link {
+  color: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+.entry-grid .entry-link:hover {
+  text-decoration: underline solid;
+}
+
 .entry-grid thead th.entry-corner {
   z-index: 4;
   cursor: default;

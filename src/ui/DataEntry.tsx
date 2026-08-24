@@ -64,10 +64,22 @@ export function DataEntry({
                     style={offset(i)}
                     title={cell}
                     // Selecting a row is how one with nothing checked still
-                    // counts as entered.
+                    // counts as entered. A link click bubbles here too: looking
+                    // an organization up is working on that row.
                     onClick={() => entry.select(record.key)}
                   >
-                    {cell}
+                    {record.links?.[entry.frozen[i]] ? (
+                      <a
+                        className="entry-link"
+                        href={record.links[entry.frozen[i]]}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {cell}
+                      </a>
+                    ) : (
+                      cell
+                    )}
                   </th>
                 ))}
                 {node.options.map((option) => (

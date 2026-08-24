@@ -138,7 +138,7 @@ async function main(): Promise<number> {
     group("Schemas", nodeSchemas.map(fromShape), verbose);
     group("Schema Errors", schemaErrors.map(fromSchema), verbose);
     group("Missing Scripts", scripts.map(fromScript), verbose);
-    group("Script Inputs", reads.map(fromReads), verbose);
+    group("Input Columns", reads.map(fromReads), verbose);
     group("Undeclared Inputs", byKind("undeclared", "unknown_node", "not_a_table").map(fromInput), verbose);
     group("Unused Declarations", byKind("unused").map(fromInput), verbose);
     group("Other", byKind("qualified", "self_reference", "walker").map(fromInput), verbose);
@@ -186,12 +186,21 @@ function fromScript(missing: MissingScript): Finding {
   };
 }
 
+const fixes: Record<ReadProblem["field"], string> = {
+  reads:
+    "Fix the name in `reads:`, and in the script beside it, or add the column upstream.",
+  key: "Fix the name in `key:`, or add the column upstream.",
+  frozen: "Fix the name in `frozen:`, or add the column upstream.",
+  links: "Fix the name in the `links:` template, or add the column upstream.",
+};
+
 function fromReads(problem: ReadProblem): Finding {
   const names = problem.missing.join(", ");
+  const fix = fixes[problem.field];
   return {
     subject: problem.node,
     summary: `${problem.input} has no ${names}`,
-    detail: `This node reads ${names} from \`${problem.input}\`, which has: ${problem.available.join(", ")}.\nFix the name in \`reads:\`, and in the script beside it, or add the column upstream.`,
+    detail: `This node reads ${names} from \`${problem.input}\`, which has: ${problem.available.join(", ")}.\n${fix}`,
   };
 }
 

@@ -49,6 +49,21 @@ const UserDataEntryNode = Described.extend({
   // One checkbox column each, in the order they appear. Written inline or as
   // the name of an option set, which is expanded to this before parsing.
   options: z.array(z.string()),
+  // Frozen column to the href its cell links to. `{column}` is replaced with
+  // that record's value; the rest of the template is used as written.
+  links: z.record(z.string(), z.string()).default({}),
+}).superRefine((node, ctx) => {
+  // frozenColumns() in ./dataEntry, inlined to keep this module free of it.
+  const frozen = node.frozen.length > 0 ? node.frozen : [node.key];
+  for (const column of Object.keys(node.links)) {
+    if (frozen.includes(column)) continue;
+    ctx.addIssue({
+      code: "custom",
+      path: ["links", column],
+      message: `Only a frozen column can be a link. This grid pins: ${frozen.join(", ")}.`,
+      input: node.links,
+    });
+  }
 });
 
 const OperationResultNode = Described.extend({
