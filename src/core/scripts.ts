@@ -22,6 +22,8 @@ export type ScriptDocument = {
 export type ScriptContext = {
   // Every row of the node's declared input, in the order the table holds them.
   input: Rows;
+  // The node's `options:`, already expanded from an option set if it named one.
+  options: string[];
 };
 
 export type ScriptOutput = Rows | ScriptDocument;

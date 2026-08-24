@@ -1,4 +1,9 @@
-import { select, type Rows, type ScriptContext, type Selected } from "@core/scripts";
+import {
+  select,
+  type Rows,
+  type ScriptContext,
+  type Selected,
+} from "@core/scripts";
 
 const ENDPOINT = "https://nominatim.openstreetmap.org/search";
 
@@ -7,7 +12,10 @@ const NAMED = 10;
 
 // The same columns the node's `reads:` lists, so validate can compare them
 // against the input table before any of this runs.
-type Organization = Selected<"ein" | "address", "name" | "city" | "state" | "zip">;
+type Organization = Selected<
+  "ein" | "address",
+  "name" | "city" | "state" | "zip"
+>;
 
 type Located = { row: Organization; address: string };
 
@@ -22,7 +30,7 @@ export default async function geocode({ input }: ScriptContext): Promise<Rows> {
   const incomplete: string[] = [];
 
   rows.forEach((row, i) => {
-    const address = fullAddress(row);
+    const address = conslidateAddressFields(row);
     if (!address) return void incomplete.push(identify(row, i));
     located.push({ row, address });
   });
@@ -36,7 +44,9 @@ export default async function geocode({ input }: ScriptContext): Promise<Rows> {
   // a second and will start refusing under a burst.
   for (const { row, address } of located) {
     const url = `${ENDPOINT}?format=json&limit=1&q=${encodeURIComponent(address)}`;
-    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    const response = await fetch(url, {
+      headers: { Accept: "application/json" },
+    });
     if (!response.ok) {
       throw new Error(`Geocoding ${address} failed: ${response.status}`);
     }
@@ -55,7 +65,7 @@ export default async function geocode({ input }: ScriptContext): Promise<Rows> {
 
 // A street on its own places nothing, so a locality of some kind is required
 // alongside it. select() has already guaranteed the street.
-function fullAddress(row: Organization): string | undefined {
+function conslidateAddressFields(row: Organization): string | undefined {
   const locality = [row.city, row.state, row.zip].filter(Boolean);
   if (locality.length === 0) return undefined;
   return [row.address, ...locality].join(", ");

@@ -22,14 +22,19 @@ export function checkReads(
   const problems: ReadProblem[] = [];
 
   for (const [node, fields] of Object.entries(dag.nodes)) {
-    if (fields.kind !== "script" || fields.reads.length === 0) continue;
+    if (fields.kind !== "script") continue;
+
+    // A script's options are input columns too, named as a set instead of one
+    // at a time, so they are checked the same way.
+    const wanted = [...fields.reads, ...fields.options];
+    if (wanted.length === 0) continue;
 
     // A table that never got built means something upstream is already wrong,
     // and reporting it here would only say the same thing twice.
     const columns = built.get(fields.input);
     if (!columns) continue;
 
-    const missing = fields.reads.filter((column) => !(column in columns));
+    const missing = wanted.filter((column) => !(column in columns));
     if (missing.length === 0) continue;
 
     problems.push({

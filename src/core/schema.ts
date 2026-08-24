@@ -68,6 +68,9 @@ const ScriptNode = Described.extend({
   // before anything runs. Nothing requires the list to be complete: a column
   // left out of it is simply unchecked.
   reads: z.array(z.string()).default([]),
+  // Input columns the script is handed as a set rather than one at a time.
+  // Written inline or as the name of an option set, like a data_entry node's.
+  options: z.array(z.string()).default([]),
   // Declared when the script returns rows, so they can be loaded and queried.
   // Omitted when it returns a document, which has no columns and no table.
   schema: z.string().optional(),
