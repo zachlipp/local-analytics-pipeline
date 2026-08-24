@@ -132,6 +132,24 @@ async function bind(
   return columns;
 }
 
+// The types a node's CSV should be read with, or undefined when it never named
+// a shape. A missing or unknown schema is the shape pass's complaint to make,
+// so this stays quiet and lets DuckDB sniff as before.
+export function declaredTypes(
+  node: Node,
+  schemas: Schemas,
+): Columns | undefined {
+  switch (node.kind) {
+    case "file":
+    case "script":
+      return node.schema ? schemas[node.schema] : undefined;
+    case "operation_result":
+      return undefined;
+    default:
+      return nodeShape(node, schemas);
+  }
+}
+
 // The columns a node declares for itself, or undefined when it has no table at
 // all. Throws for operation_result: asking a node to declare what its own
 // operation decides is how the two drift.

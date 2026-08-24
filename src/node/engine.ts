@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { DuckDBInstance } from "@duckdb/node-api";
 import {
   createEmpty,
+  readCsv,
   describeQuery,
   literal,
   parseSql,
@@ -38,12 +39,16 @@ export async function nodeEngine(): Promise<NodeEngine> {
 
     // read_csv wants a path and node-api has no in-memory file registry, so
     // the text lands in a scratch directory the process throws away.
-    async loadCsv(table: string, csv: string): Promise<number> {
+    async loadCsv(
+      table: string,
+      csv: string,
+      types?: Record<string, string>,
+    ): Promise<number> {
       const file = join(scratch, `${encodeURIComponent(table)}.csv`);
       writeFileSync(file, csv);
       await query(
         `CREATE OR REPLACE TABLE ${quote(table)} AS
-           SELECT * FROM read_csv_auto(${literal(file)}, header=true)`,
+           SELECT * FROM ${readCsv(literal(file), types)}`,
       );
       const [row] = await query(`SELECT count(*) AS n FROM ${quote(table)}`);
       return Number(row?.n ?? 0);

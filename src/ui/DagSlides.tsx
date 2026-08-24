@@ -158,7 +158,7 @@ function SlideControl({ node, name, pipeline, dag }: ControlProps) {
       return <FileControl id={node.id} source={node.source} />;
 
     case "script":
-      return <ScriptControl node={node} table={name} />;
+      return <ScriptControl node={node} table={name} schemas={dag.schemas} />;
 
     case "user_input":
       return <UserInputControl id={node.id} label={node.description} />;
@@ -326,13 +326,15 @@ function FileControl({ id, source }: { id: string; source?: string }) {
 function ScriptControl({
   node,
   table,
+  schemas,
 }: {
   node: ScriptNode;
   // The node's name, which is also the table its rows land in.
   table: string;
+  schemas: Dag["schemas"];
 }) {
   const [, report] = useNodeResult(node.id);
-  const { running, error, result, run } = useScript(node, table, report);
+  const { running, error, result, run } = useScript(node, table, schemas, report);
 
   return (
     <>

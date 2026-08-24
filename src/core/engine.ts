@@ -3,7 +3,11 @@ export type Row = Record<string, string>;
 // The one thing every part of this project needs from a database, and nothing
 // more. duckdb-wasm in the browser, @duckdb/node-api on the command line.
 export interface Engine {
-  loadCsv(table: string, csv: string): Promise<number>;
+  loadCsv(
+    table: string,
+    csv: string,
+    types?: Record<string, string>,
+  ): Promise<number>;
   query(sql: string): Promise<Row[]>;
   columns(table: string): Promise<string[]>;
   createEmpty(table: string, columns: Record<string, string>): Promise<void>;
@@ -31,6 +35,24 @@ export function statement(sql: string): string {
 }
 
 const TYPE = /^[A-Za-z0-9_ ,()[\]"']+$/;
+
+// DuckDB sniffs CSV types, so a column of digits arrives as BIGINT whatever the
+// pipeline declared. Naming the types is what makes the schema binding.
+export function readCsv(
+  source: string,
+  types?: Record<string, string>,
+): string {
+  const entries = Object.entries(types ?? {});
+  if (entries.length === 0) return `read_csv_auto(${source}, header=true)`;
+
+  const declared = entries.map(([column, type]) => {
+    if (!TYPE.test(type)) {
+      throw new Error(`${column} has an unusable type: ${type}`);
+    }
+    return `${literal(column)}: ${literal(type)}`;
+  });
+  return `read_csv(${source}, header=true, types={${declared.join(", ")}})`;
+}
 
 // An operation's output shape, without running it or holding a row in memory.
 export async function describeQuery(

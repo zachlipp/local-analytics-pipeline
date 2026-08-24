@@ -2,7 +2,8 @@ import { useState } from "react";
 
 import { toCsv } from "@core/csv";
 import { isDocument, type ScriptDocument } from "@core/scripts";
-import type { ScriptNode } from "@core/schema";
+import type { ScriptNode, Schemas } from "@core/schema";
+import { declaredTypes } from "@core/shapes";
 import type { NodeResult } from "@core/status";
 import { loadScript } from "./scripts";
 
@@ -20,6 +21,7 @@ export type ScriptResult = {
 export function useScript(
   node: ScriptNode,
   table: string,
+  schemas: Schemas,
   // Mirrors progress into the run store, where status is derived from it.
   report: (patch: NodeResult) => void,
 ) {
@@ -47,7 +49,7 @@ export function useScript(
       }
 
       const csv = toCsv(columnsOf(output), output);
-      const rows = await loadCsv(table, csv);
+      const rows = await loadCsv(table, csv, declaredTypes(node, schemas));
       setResult({ table, rows });
       report({ running: false, value: csv, table, rows });
     } catch (cause) {

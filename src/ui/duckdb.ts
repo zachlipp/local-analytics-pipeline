@@ -1,8 +1,10 @@
 import {
   createEmpty,
   describeQuery,
+  literal,
   parseSql,
   quote,
+  readCsv,
   type Engine,
   type Row,
 } from "@core/engine";
@@ -42,7 +44,7 @@ function database(): Promise<duckdb.AsyncDuckDB> {
 // What each table was last built from. Lives with the database so both are
 // thrown away together. The text is already retained by the run store, so
 // holding it here is a reference, not a copy.
-const loaded = new Map<string, { csv: string; rows: number }>();
+const loaded = new Map<string, { csv: string; types: string; rows: number }>();
 
 /**
  * Register CSV text as a table.
@@ -51,11 +53,17 @@ const loaded = new Map<string, { csv: string; rows: number }>();
  * fetch does, and we already have the bytes by the time we get here. Returns
  * the row count, which is the cheapest proof the parse actually worked.
  */
-export async function loadCsv(table: string, csv: string): Promise<number> {
+export async function loadCsv(
+  table: string,
+  csv: string,
+  types?: Record<string, string>,
+): Promise<number> {
+  const shape = JSON.stringify(types ?? {});
   const cached = loaded.get(table);
   // Confirming the table is still there keeps a stale entry from handing back
   // a row count for something that has since been dropped.
-  if (cached?.csv === csv && (await hasTable(table))) return cached.rows;
+  if (cached?.csv === csv && cached.types === shape && (await hasTable(table)))
+    return cached.rows;
 
   const db = await database();
 
@@ -69,14 +77,14 @@ export async function loadCsv(table: string, csv: string): Promise<number> {
   try {
     await conn.query(
       `CREATE OR REPLACE TABLE ${quote(table)} AS
-         SELECT * FROM read_csv_auto('${file}', header=true)`,
+         SELECT * FROM ${readCsv(literal(file), types)}`,
     );
     const result = await conn.query(
       `SELECT count(*) AS n FROM ${quote(table)}`,
     );
     // Arrow hands back a BigInt for count(*).
     const rows = Number(result.toArray()[0]?.toJSON().n ?? 0);
-    loaded.set(table, { csv, rows });
+    loaded.set(table, { csv, types: shape, rows });
     return rows;
   } finally {
     await conn.close();
