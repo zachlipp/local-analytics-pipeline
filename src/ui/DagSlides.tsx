@@ -9,6 +9,7 @@ import { nodeStatuses } from "@core/status";
 import { DataEntry } from "./DataEntry";
 import { DataLiteral } from "./DataLiteral";
 import type { Row } from "./duckdb";
+import { list } from "@core/utils";
 import { useNodeResult, useRun } from "./RunState";
 import { useRoute } from "./route";
 import { SourceLink } from "./SourceLink";
@@ -109,6 +110,8 @@ export function DagSlides({ dag }: { dag: Dag }) {
             </div>
           )}
 
+          <DroppedColumns id={step.node.id} />
+
           <SlideControl
             // Remounts on every slide, which is what clears a half-finished
             // request's local state when you arrow away and back.
@@ -139,6 +142,24 @@ export function DagSlides({ dag }: { dag: Dag }) {
           <Chevron direction="right" />
         </button>
       </nav>
+    </div>
+  );
+}
+
+// Columns the file had that the node's schema never named. Not an error — the
+// table built — but the data is gone and nothing downstream can ask for it.
+function DroppedColumns({ id }: { id: string }) {
+  const [result] = useNodeResult(id);
+  const dropped = result.dropped ?? [];
+  if (dropped.length === 0) return null;
+
+  return (
+    <div className="dag-slide-warning">
+      {dropped.length === 1
+        ? `Ignored one column this node's schema does not declare: ${list(dropped)}.`
+        : `Ignored ${dropped.length} columns this node's schema does not declare: ${list(dropped)}.`}{" "}
+      They are not in the table and cannot be queried. Add them to the schema to
+      keep them.
     </div>
   );
 }

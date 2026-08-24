@@ -3,7 +3,7 @@ import { useState } from "react";
 import { toCsv } from "@core/csv";
 import { isDocument, type ScriptDocument } from "@core/scripts";
 import type { ScriptNode, Schemas } from "@core/schema";
-import { declaredTypes } from "@core/shapes";
+import { declaredTypes, undeclaredColumns } from "@core/shapes";
 import type { NodeResult } from "@core/status";
 import { loadScript } from "./scripts";
 
@@ -49,9 +49,16 @@ export function useScript(
       }
 
       const csv = toCsv(columnsOf(output), output);
-      const rows = await loadCsv(table, csv, declaredTypes(node, schemas));
+      const types = declaredTypes(node, schemas);
+      const rows = await loadCsv(table, csv, types);
       setResult({ table, rows });
-      report({ running: false, value: csv, table, rows });
+      report({
+        running: false,
+        value: csv,
+        table,
+        rows,
+        dropped: undeclaredColumns(types, csv),
+      });
     } catch (cause) {
       setResult(undefined);
       const message = cause instanceof Error ? cause.message : String(cause);

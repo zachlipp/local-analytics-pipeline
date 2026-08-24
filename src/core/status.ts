@@ -31,6 +31,8 @@ export type NodeResult = {
   table?: string;
   /** Rows in that table. */
   rows?: number;
+  /** Columns the file had that its schema never named, dropped at load. */
+  dropped?: string[];
 };
 
 /**

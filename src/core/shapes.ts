@@ -1,8 +1,10 @@
+import { csvColumns } from "./csv";
 import { frozenColumns } from "./dataEntry";
 import { statement, type Engine } from "./engine";
 import type { Pipeline } from "./pipeline";
 import { literalColumns } from "./runner";
 import type { Dag, Node, Schemas } from "./schema";
+import { list, quoted } from "./utils";
 
 export type Columns = Record<string, string>;
 
@@ -130,6 +132,49 @@ async function bind(
   const columns = await engine.describeQuery(query);
   await engine.createEmpty(name, columns);
   return columns;
+}
+
+/**
+ * What's wrong with this CSV's columns, phrased for whoever has to fix it.
+ *
+ * A schema is one node's whole shape — the types and the columns both — so a
+ * declared column the file does not have is the file being wrong. read_csv
+ * would reject it anyway; this is the same refusal in words a person can act on.
+ */
+export function checkDeclaredColumns(
+  name: string,
+  declared: Columns | undefined,
+  csv: string,
+): string | undefined {
+  if (!declared) return undefined;
+
+  const columns = csvColumns(csv);
+  const present = new Set(columns);
+  const missing = Object.keys(declared).filter((c) => !present.has(c));
+  if (missing.length === 0) return undefined;
+
+  const needs =
+    missing.length === 1
+      ? `needs a column called ${quoted(missing[0])}`
+      : `needs these columns: ${list(missing)}`;
+  const has =
+    columns.length > 0
+      ? `The columns it has are ${list(columns)}.`
+      : `It has no columns at all.`;
+
+  return `${quoted(name)} ${needs}. ${has}`;
+}
+
+// Columns the file has and the schema never named. They are dropped at load
+// rather than sniffed in alongside the declared ones: a column nothing declared
+// is a column nothing downstream can rely on, and letting it through means its
+// type is guessed and a `SELECT *` carries it anyway.
+export function undeclaredColumns(
+  declared: Columns | undefined,
+  csv: string,
+): string[] {
+  if (!declared) return [];
+  return csvColumns(csv).filter((column) => !(column in declared));
 }
 
 // The types a node's CSV should be read with, or undefined when it never named

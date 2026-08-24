@@ -42,3 +42,15 @@ function format(b: Uint8Array): string {
   const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
+
+export function quoted(value: string): string {
+  return `“${value}”`;
+}
+
+// Oxford comma: these get read out loud to people who did not ask for SQL.
+export function list(values: string[]): string {
+  const quotedValues = values.map(quoted);
+  if (quotedValues.length <= 2) return quotedValues.join(" and ");
+  const last = quotedValues[quotedValues.length - 1];
+  return `${quotedValues.slice(0, -1).join(", ")}, and ${last}`;
+}

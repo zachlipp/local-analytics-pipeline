@@ -1,4 +1,4 @@
-import { list, quoted } from "./constraints";
+import { list, quoted } from "./utils";
 import {
   SqlParseError,
   tableReferences,

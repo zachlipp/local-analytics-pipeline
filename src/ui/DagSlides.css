@@ -35,6 +35,13 @@
   overflow-y: auto;
 }
 
+/* Definite width: otherwise a wide table sets it and percentages below resolve against the overflow. */
+.dag-slide {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
 .dag-slide-count {
   color: var(--muted);
   font-size: 0.85rem;
@@ -130,6 +137,13 @@
   overflow-wrap: anywhere;
 }
 
+/* Amber rather than red: the node built, and the run is going to continue. */
+.dag-slide-warning {
+  margin-top: 0.5rem;
+  color: #b45309;
+  font-size: 0.85rem;
+}
+
 .dag-slide-error {
   margin-top: 0.5rem;
   color: #dc2626;
@@ -164,7 +178,8 @@
 /* An operation's first rows. A result table can be far wider than the slide,
    so it scrolls sideways inside its own box rather than stretching one. */
 .dag-slide-preview {
-  max-width: 100%;
+  width: fit-content;
+  max-width: 50%;
   max-height: 14rem;
   margin: 0.75rem auto 0;
   overflow: auto;

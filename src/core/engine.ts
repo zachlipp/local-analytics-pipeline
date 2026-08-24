@@ -51,7 +51,11 @@ export function readCsv(
     }
     return `${literal(column)}: ${literal(type)}`;
   });
-  return `read_csv(${source}, header=true, types={${declared.join(", ")}})`;
+
+  // Selecting the declared columns by name drops anything the schema left out
+  // and puts the rest in the order the schema declares them.
+  const select = entries.map(([column]) => quote(column)).join(", ");
+  return `(SELECT ${select} FROM read_csv(${source}, header=true, types={${declared.join(", ")}}))`;
 }
 
 // An operation's output shape, without running it or holding a row in memory.

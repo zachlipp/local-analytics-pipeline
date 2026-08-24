@@ -24,18 +24,7 @@ export const NodeInput = Identified.extend({
   name: z.string(),
 });
 
-// What has to be true of a node's table before anything downstream may use it.
-export const Constraints = z.object({
-  required_columns: z.array(z.string()).default([]),
-});
-
-// Constraints hang on the node, not the operation: the node is the table, and
-// a file has to be checkable without an operation to hang anything on.
-const Constrained = Described.extend({
-  constraints: Constraints.default({ required_columns: [] }),
-});
-
-const FileNode = Constrained.extend({
+const FileNode = Described.extend({
   kind: z.literal("file"),
   // TODO: Implement schema matching
   schema: z.string().optional(),
@@ -43,14 +32,14 @@ const FileNode = Constrained.extend({
   source: z.url().optional(),
 });
 
-const UserInputNode = Constrained.extend({
+const UserInputNode = Described.extend({
   kind: z.literal("user_input"),
   user_input: z.string().optional(),
 });
 
 // Options are declared rather than inferred from the source columns: a node
 // has to say what it asks for before anything upstream has run.
-const UserDataEntryNode = Constrained.extend({
+const UserDataEntryNode = Described.extend({
   kind: z.literal("data_entry"),
   input: z.string(),
   // Column identifying a record; what the marks are written against.
@@ -62,13 +51,13 @@ const UserDataEntryNode = Constrained.extend({
   options: z.array(z.string()),
 });
 
-const OperationResultNode = Constrained.extend({
+const OperationResultNode = Described.extend({
   kind: z.literal("operation_result"),
 });
 
 // A node whose value comes from JavaScript in this project rather than from a
 // file, a query, or the user. `src` names a module under src/nodes/scripts.
-const ScriptNode = Constrained.extend({
+const ScriptNode = Described.extend({
   kind: z.literal("script"),
   src: z
     .string()
@@ -88,7 +77,7 @@ const ScriptNode = Constrained.extend({
 });
 
 const DataLiteralRow = z.record(z.string(), z.string());
-const DataLiteralNode = Constrained.extend({
+const DataLiteralNode = Described.extend({
   kind: z.literal("data_literal"),
   // Column name for bare-string rows, which carry none of their own.
   column: z.string().default("value"),
