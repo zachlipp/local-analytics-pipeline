@@ -5,6 +5,9 @@ import type { Dag } from "@core/schema";
 import type { Row } from "./duckdb";
 import { useRun } from "./RunState";
 
+// Searching queries the whole table, so this is only how much fits on screen.
+const PREVIEW_ROWS = 25;
+
 export type RunHandle = {
   /** Build everything the named node needs, then the node itself. */
   run: (target: string) => Promise<void>;
@@ -12,6 +15,8 @@ export type RunHandle = {
   error?: string;
   /** The first rows of the target's table, once it has been built. */
   preview?: Row[];
+  /** The same first rows, re-queried for the ones matching a search. */
+  search: (target: string, query: string) => Promise<Row[]>;
   rows?: number;
 };
 
@@ -56,7 +61,7 @@ export function useRunPipeline(pipeline: Pipeline, dag: Dag): RunHandle {
           return;
         }
         setRows(outcome.ran.get(target));
-        setPreview(await previewTable(target));
+        setPreview(await previewTable(target, PREVIEW_ROWS));
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : String(cause));
       } finally {
@@ -66,5 +71,10 @@ export function useRunPipeline(pipeline: Pipeline, dag: Dag): RunHandle {
     [pipeline, dag],
   );
 
-  return { run, running, error, preview, rows };
+  const search = useCallback(async (target: string, query: string) => {
+    const { previewTable } = await import("./runPipeline");
+    return previewTable(target, PREVIEW_ROWS, query);
+  }, []);
+
+  return { run, running, error, preview, search, rows };
 }

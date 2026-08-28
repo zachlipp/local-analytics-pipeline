@@ -20,6 +20,6 @@ export function runPipeline(
   return run(wasmEngine, pipeline, dag, results, report, target);
 }
 
-export function previewTable(name: string, limit = 5) {
-  return preview(wasmEngine, name, limit);
+export function previewTable(name: string, limit = 5, search?: string) {
+  return preview(wasmEngine, name, limit, search);
 }

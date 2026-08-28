@@ -177,6 +177,25 @@
 
 /* An operation's first rows. A result table can be far wider than the slide,
    so it scrolls sideways inside its own box rather than stretching one. */
+.dag-slide-search {
+  display: block;
+  box-sizing: border-box;
+  width: min(20rem, 100%);
+  margin: 0.75rem auto 0;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
+.dag-slide-search:focus {
+  outline: none;
+  border-color: var(--text);
+}
+
 .dag-slide-preview {
   width: fit-content;
   max-width: 50%;

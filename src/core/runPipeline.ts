@@ -1,6 +1,6 @@
-import { toCsv } from "./csv";
+import { SEARCHABLE, toCsv } from "./csv";
 import { entriesToCsv, toRecords } from "./dataEntry";
-import { quote, type Engine } from "./engine";
+import { literal, quote, type Engine } from "./engine";
 import type { Pipeline } from "./pipeline";
 import { literalCsv, planRun, type RunTask } from "./runner";
 import type { Dag, Schemas } from "./schema";
@@ -150,6 +150,33 @@ async function createTable(
 }
 
 /** The first rows of a materialized table, for showing the run worked. */
-export async function previewTable(engine: Engine, name: string, limit = 5) {
-  return engine.query(`SELECT * FROM ${quote(name)} LIMIT ${limit}`);
+export async function previewTable(
+  engine: Engine,
+  name: string,
+  limit = 5,
+  search?: string,
+) {
+  const where = await searchClause(engine, name, search?.trim() ?? "");
+  return engine.query(`SELECT * FROM ${quote(name)}${where} LIMIT ${limit}`);
+}
+
+// A table with neither column is not searchable, and the box finds nothing.
+async function searchClause(
+  engine: Engine,
+  name: string,
+  needle: string,
+): Promise<string> {
+  if (!needle) return "";
+
+  const columns = (await engine.columns(name)).filter((column) =>
+    SEARCHABLE.includes(column.toLowerCase()),
+  );
+  if (columns.length === 0) return "";
+
+  const pattern = literal(`%${needle.replace(/[\\%_]/g, "\\$&")}%`);
+  const tests = columns.map(
+    (column) =>
+      `CAST(${quote(column)} AS VARCHAR) ILIKE ${pattern} ESCAPE '\\'`,
+  );
+  return ` WHERE ${tests.join(" OR ")}`;
 }

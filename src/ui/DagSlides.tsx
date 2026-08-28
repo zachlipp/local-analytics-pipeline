@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import "./DagSlides.css";
 
 import { buildPipeline, type Pipeline } from "@core/pipeline";
+import { csvRows, searchRows } from "@core/csv";
 import { scriptPath } from "@core/scripts";
 import type { Dag, Node, ScriptNode } from "@core/schema";
 import { nodeStatuses } from "@core/status";
@@ -18,6 +19,9 @@ import { StatusBadge } from "./StatusBadge";
 import { useFileUpload } from "./useFileUpload";
 import { useRunPipeline } from "./useRunPipeline";
 import { useScript, type ScriptResult } from "./useScript";
+
+// How many rows fit on screen; the search itself is not limited to them.
+const PREVIEW_ROWS = 25;
 
 /**
  * The graph one node at a time, in dependency order.
@@ -225,7 +229,14 @@ function OperationControl({
   dag: Dag;
 }) {
   const [result] = useNodeResult(node.id);
-  const { run, running, error, preview, rows } = useRunPipeline(pipeline, dag);
+  const { run, running, error, preview, search, rows } = useRunPipeline(
+    pipeline,
+    dag,
+  );
+  const searchTable = useCallback(
+    (query: string) => search(name, query),
+    [search, name],
+  );
   const operation = pipeline.nodes.get(name)?.operation;
 
   if (!operation) {
@@ -259,15 +270,81 @@ function OperationControl({
           {count} rows in <code>{name}</code>
         </div>
       )}
-      {preview && preview.length > 0 && <TablePreview rows={preview} />}
+      {preview && preview.length > 0 && (
+        <TablePreview rows={preview} search={searchTable} />
+      )}
       {error && <div className="dag-slide-error">{error}</div>}
     </>
   );
 }
 
 /** The first few rows, wide tables scrolling sideways rather than wrapping. */
-function TablePreview({ rows }: { rows: Row[] }) {
-  const columns = Object.keys(rows[0] ?? {});
+function TablePreview({
+  rows,
+  search,
+}: {
+  rows: Row[];
+  // Runs against the whole table, not the rows above — a preview is five rows
+  // of a hundred thousand, and searching only those would find nothing.
+  search: (query: string) => Promise<Row[]>;
+}) {
+  const [query, setQuery] = useState("");
+  const [matches, setMatches] = useState<Row[]>();
+  const [error, setError] = useState<string>();
+
+  // Typed a character at a time; each keystroke is a query, so it waits for a
+  // pause and drops anything still in flight when the next one starts.
+  useEffect(() => {
+    const needle = query.trim();
+    if (!needle) return;
+
+    let live = true;
+    const timer = setTimeout(() => {
+      search(needle)
+        .then((found) => live && setMatches(found))
+        .catch(
+          (cause: unknown) =>
+            live &&
+            setError(cause instanceof Error ? cause.message : String(cause)),
+        );
+    }, 200);
+
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [query, search]);
+
+  const shown = matches ?? rows;
+  const columns = Object.keys(shown[0] ?? rows[0] ?? {});
+
+  return (
+    <>
+      <input
+        className="dag-slide-search"
+        type="search"
+        value={query}
+        placeholder="Search by name or EIN"
+        aria-label="Search by name or EIN"
+        onChange={(e) => {
+          setQuery(e.target.value);
+          if (!e.target.value.trim()) {
+            setMatches(undefined);
+            setError(undefined);
+          }
+        }}
+      />
+      {error && <div className="dag-slide-error">{error}</div>}
+      {shown.length === 0 ? (
+        <div className="dag-slide-note">No rows match {`"${query}"`}.</div>
+      ) : (
+        <TableBody columns={columns} rows={shown} />
+      )}
+    </>
+  );
+}
+
+function TableBody({ columns, rows }: { columns: string[]; rows: Row[] }) {
   return (
     <div className="dag-slide-preview">
       <table>
@@ -338,9 +415,23 @@ function FileControl({ id, source }: { id: string; source?: string }) {
       </label>
 
       {file && !uploading && <div className="dag-slide-note">{file.name}</div>}
+      {file && !uploading && <FilePreview text={file.text} />}
       {error && <div className="dag-slide-error">{error}</div>}
     </>
   );
+}
+
+// The file as it will be read, before anything has been run on it. Nothing is
+// in the database yet, so the search runs over the parsed text.
+function FilePreview({ text }: { text: string }) {
+  const rows = useMemo(() => csvRows(text), [text]);
+  const search = useCallback(
+    (query: string) => Promise.resolve(searchRows(rows, query, PREVIEW_ROWS)),
+    [rows],
+  );
+
+  if (rows.length === 0) return null;
+  return <TablePreview rows={rows.slice(0, PREVIEW_ROWS)} search={search} />;
 }
 
 // Run this node's script and show what came back.
