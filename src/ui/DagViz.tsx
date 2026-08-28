@@ -26,6 +26,7 @@ import { buildPipeline } from "@core/pipeline";
 import type { Dag, Node } from "@core/schema";
 import { nodeStatuses, type Status } from "@core/status";
 import { DataLiteral } from "./DataLiteral";
+import { useRoute } from "./route";
 import { useNodeResult, useRun } from "./RunState";
 import { SourceLink } from "./SourceLink";
 import { Spinner } from "./Spinner";
@@ -96,7 +97,16 @@ function DagFlow({ dag, direction }: { dag: Dag; direction: Direction }) {
   // view is already reflected here. Keyed by name; the flow nodes carry ids,
   // which is what statusById bridges.
   const { results } = useRun();
+  const [, navigate] = useRoute();
   const pipeline = useMemo(() => buildPipeline(dag), [dag]);
+
+  // The graph is the map; a double click walks to that node's slide. Single
+  // click stays selection, and the file drop inside a node still works.
+  const openStep = useCallback(
+    (_: React.MouseEvent, node: DagFlowNode) =>
+      navigate({ view: "steps", step: node.data.name }),
+    [navigate],
+  );
   const statusById = useMemo(() => {
     const byName = nodeStatuses(pipeline, results);
     const byId = new Map<string, Status>();
@@ -277,6 +287,7 @@ function DagFlow({ dag, direction }: { dag: Dag; direction: Direction }) {
             onEdgeMouseEnter={onEdgeHover}
             onEdgeMouseMove={onEdgeHover}
             onEdgeClick={onEdgeClick}
+            onNodeDoubleClick={openStep}
             onEdgeMouseLeave={() => setHover(null)}
             // Clicking empty canvas dismisses a pinned bundle.
             onPaneClick={() => setPinned(null)}
