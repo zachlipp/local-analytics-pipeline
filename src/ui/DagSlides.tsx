@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import "./DagSlides.css";
 
 import { buildPipeline, type Pipeline } from "@core/pipeline";
-import { csvRows, searchRows } from "@core/csv";
+import { csvRows, SEARCHABLE, searchLabel, searchRows } from "@core/csv";
 import { scriptPath } from "@core/scripts";
 import type { Dag, Node, ScriptNode } from "@core/schema";
 import { nodeStatuses } from "@core/status";
@@ -36,7 +36,14 @@ const PREVIEW_ROWS = 25;
  * a request to fire, a value to type. Nothing consumes those answers yet, so
  * this is still a walkthrough rather than a runner.
  */
-export function DagSlides({ dag }: { dag: Dag }) {
+export function DagSlides({
+  dag,
+  searchColumns = SEARCHABLE,
+}: {
+  dag: Dag;
+  /** Columns a preview's search box looks in, and names in its placeholder. */
+  searchColumns?: string[];
+}) {
   const pipeline = useMemo(() => buildPipeline(dag), [dag]);
   const [route, navigate] = useRoute();
 
@@ -125,6 +132,7 @@ export function DagSlides({ dag }: { dag: Dag }) {
             name={step.name}
             pipeline={pipeline}
             dag={dag}
+            searchColumns={searchColumns}
           />
         </div>
       </div>
@@ -175,13 +183,26 @@ type ControlProps = {
   name: string;
   pipeline: Pipeline;
   dag: Dag;
+  searchColumns: string[];
 };
 
 /** What this node wants from the user, if it wants anything. */
-function SlideControl({ node, name, pipeline, dag }: ControlProps) {
+function SlideControl({
+  node,
+  name,
+  pipeline,
+  dag,
+  searchColumns,
+}: ControlProps) {
   switch (node.kind) {
     case "file":
-      return <FileControl id={node.id} source={node.source} />;
+      return (
+        <FileControl
+          id={node.id}
+          source={node.source}
+          searchColumns={searchColumns}
+        />
+      );
 
     case "script":
       return <ScriptControl node={node} table={name} schemas={dag.schemas} />;
@@ -202,6 +223,7 @@ function SlideControl({ node, name, pipeline, dag }: ControlProps) {
           name={name}
           pipeline={pipeline}
           dag={dag}
+          searchColumns={searchColumns}
         />
       );
   }
@@ -219,11 +241,13 @@ function OperationControl({
   name,
   pipeline,
   dag,
+  searchColumns,
 }: {
   node: Node;
   name: string;
   pipeline: Pipeline;
   dag: Dag;
+  searchColumns: string[];
 }) {
   const [result] = useNodeResult(node.id);
   const { run, running, error, preview, search, query, rows } = useRunPipeline(
@@ -231,8 +255,8 @@ function OperationControl({
     dag,
   );
   const searchTable = useCallback(
-    (query: string) => search(name, query),
-    [search, name],
+    (query: string) => search(name, query, searchColumns),
+    [search, name, searchColumns],
   );
   const operation = pipeline.nodes.get(name)?.operation;
 
@@ -268,7 +292,12 @@ function OperationControl({
         </div>
       )}
       {preview && preview.length > 0 && (
-        <TablePreview rows={preview} search={searchTable} sql={query} />
+        <TablePreview
+          rows={preview}
+          search={searchTable}
+          sql={query}
+          searchColumns={searchColumns}
+        />
       )}
       {error && <div className="dag-slide-error">{error}</div>}
     </>
@@ -280,6 +309,7 @@ function TablePreview({
   rows,
   search,
   sql,
+  searchColumns,
 }: {
   rows: Row[];
   // Runs against the whole table, not the rows above — a preview is five rows
@@ -288,6 +318,8 @@ function TablePreview({
   // Debug only, and only where there is a database to ask. Absent, the box
   // stays a search box however the flag is set.
   sql?: (statement: string) => Promise<Row[]>;
+  // Named in the placeholder so the box says what it actually looks in.
+  searchColumns: string[];
 }) {
   const [query, setQuery] = useState("");
   const [matches, setMatches] = useState<Row[]>();
@@ -346,10 +378,8 @@ function TablePreview({
           className="dag-slide-search"
           type={raw ? "text" : "search"}
           value={query}
-          placeholder={
-            raw ? "SELECT * FROM … — enter to run" : "Search by name or EIN"
-          }
-          aria-label={raw ? "SQL to run" : "Search by name or EIN"}
+          placeholder={raw ? "SELECT * FROM … — enter to run" : searchLabel(searchColumns)}
+          aria-label={raw ? "SQL to run" : searchLabel(searchColumns)}
           onChange={(e) => {
             setQuery(e.target.value);
             if (!e.target.value.trim()) clear();
@@ -426,7 +456,15 @@ function UserInputControl({ id, label }: { id: string; label: string }) {
   );
 }
 
-function FileControl({ id, source }: { id: string; source?: string }) {
+function FileControl({
+  id,
+  source,
+  searchColumns,
+}: {
+  id: string;
+  source?: string;
+  searchColumns: string[];
+}) {
   const [result, report] = useNodeResult(id);
   const { file, running: uploading, error } = result;
   const { dragging, onChange, drop } = useFileUpload(report);
@@ -455,7 +493,9 @@ function FileControl({ id, source }: { id: string; source?: string }) {
       </label>
 
       {file && !uploading && <div className="dag-slide-note">{file.name}</div>}
-      {file && !uploading && <FilePreview text={file.text} />}
+      {file && !uploading && (
+        <FilePreview text={file.text} columns={searchColumns} />
+      )}
       {error && <div className="dag-slide-error">{error}</div>}
     </>
   );
@@ -463,15 +503,22 @@ function FileControl({ id, source }: { id: string; source?: string }) {
 
 // The file as it will be read, before anything has been run on it. Nothing is
 // in the database yet, so the search runs over the parsed text.
-function FilePreview({ text }: { text: string }) {
+function FilePreview({ text, columns }: { text: string; columns: string[] }) {
   const rows = useMemo(() => csvRows(text), [text]);
   const search = useCallback(
-    (query: string) => Promise.resolve(searchRows(rows, query, PREVIEW_ROWS)),
-    [rows],
+    (query: string) =>
+      Promise.resolve(searchRows(rows, query, PREVIEW_ROWS, columns)),
+    [rows, columns],
   );
 
   if (rows.length === 0) return null;
-  return <TablePreview rows={rows.slice(0, PREVIEW_ROWS)} search={search} />;
+  return (
+    <TablePreview
+      rows={rows.slice(0, PREVIEW_ROWS)}
+      search={search}
+      searchColumns={columns}
+    />
+  );
 }
 
 // Run this node's script and show what came back.

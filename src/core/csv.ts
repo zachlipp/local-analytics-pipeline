@@ -6,6 +6,20 @@ export type CsvRow = Record<string, string | null>;
 // runPipeline, which searches the same two once a table exists.
 export const SEARCHABLE = ["name", "ein"];
 
+// What the search box calls those columns. "customer_id" reads as
+// "customer ID"; a short word is an acronym rather than a word.
+export function searchLabel(columns: string[]): string {
+  const names = columns.map((column) =>
+    column
+      .split("_")
+      .map((word) => (word.length <= 3 ? word.toUpperCase() : word))
+      .join(" "),
+  );
+  const last = names[names.length - 1];
+  const rest = names.slice(0, -1);
+  return `Search by ${rest.length > 0 ? `${rest.join(", ")} or ${last}` : last}`;
+}
+
 // Everything the runner hands DuckDB goes in as CSV text, so both the literals
 // and the entry grid write it through here.
 export function toCsv(columns: string[], rows: CsvRow[]): string {
@@ -89,6 +103,7 @@ export function searchRows(
   rows: CsvRow[],
   query: string,
   limit: number,
+  columns: string[] = SEARCHABLE,
 ): CsvRow[] {
   const needle = query.trim().toLowerCase();
   if (!needle) return rows.slice(0, limit);
@@ -98,7 +113,7 @@ export function searchRows(
     if (found.length >= limit) break;
     const hit = Object.entries(row).some(
       ([column, value]) =>
-        SEARCHABLE.includes(column.toLowerCase()) &&
+        columns.includes(column.toLowerCase()) &&
         (value ?? "").toLowerCase().includes(needle),
     );
     if (hit) found.push(row);

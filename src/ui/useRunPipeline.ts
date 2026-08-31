@@ -16,7 +16,7 @@ export type RunHandle = {
   /** The first rows of the target's table, once it has been built. */
   preview?: Row[];
   /** The same first rows, re-queried for the ones matching a search. */
-  search: (target: string, query: string) => Promise<Row[]>;
+  search: (target: string, query: string, columns?: string[]) => Promise<Row[]>;
   /** Debug only: arbitrary SQL against the same database. */
   query: (sql: string) => Promise<Row[]>;
   rows?: number;
@@ -73,10 +73,13 @@ export function useRunPipeline(pipeline: Pipeline, dag: Dag): RunHandle {
     [pipeline, dag],
   );
 
-  const search = useCallback(async (target: string, query: string) => {
-    const { previewTable } = await import("./runPipeline");
-    return previewTable(target, PREVIEW_ROWS, query);
-  }, []);
+  const search = useCallback(
+    async (target: string, query: string, columns?: string[]) => {
+      const { previewTable } = await import("./runPipeline");
+      return previewTable(target, PREVIEW_ROWS, query, columns);
+    },
+    [],
+  );
 
   const query = useCallback(async (sql: string) => {
     const { runQuery } = await import("./runPipeline");

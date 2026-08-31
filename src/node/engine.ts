@@ -20,7 +20,7 @@ export type NodeEngine = Engine & { close: () => void };
 export async function nodeEngine(): Promise<NodeEngine> {
   const instance = await DuckDBInstance.create(":memory:");
   const connection = await instance.connect();
-  const scratch = mkdtempSync(join(tmpdir(), "lap-"));
+  const scratch = mkdtempSync(join(tmpdir(), "by-ear-"));
 
   const query = async (sql: string): Promise<Row[]> => {
     const reader = await connection.runAndReadAll(sql);

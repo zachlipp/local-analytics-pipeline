@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { csvColumns, csvRows, parseCsv, searchRows, toCsv } from "../src/core/csv";
+import {
+  csvColumns,
+  csvRows,
+  parseCsv,
+  searchLabel,
+  searchRows,
+  toCsv,
+} from "../src/core/csv";
 
 describe("parseCsv", () => {
   it("reads quoted fields holding commas, quotes and newlines", () => {
@@ -51,7 +58,22 @@ describe("searchRows", () => {
     expect(searchRows(rows, "fargo", 10)).toEqual([]);
   });
 
+  it("looks in the columns it is given instead", () => {
+    expect(searchRows(rows, "fargo", 10, ["city"])).toEqual([rows[0], rows[2]]);
+    expect(searchRows(rows, "45-6", 10, ["city"])).toEqual([]);
+  });
+
   it("stops at the limit", () => {
     expect(searchRows(rows, "-", 2)).toHaveLength(2);
+  });
+});
+
+describe("searchLabel", () => {
+  it("names the columns the box looks in", () => {
+    expect(searchLabel(["name", "ein"])).toBe("Search by name or EIN");
+    expect(searchLabel(["customer_id", "name"])).toBe(
+      "Search by customer ID or name",
+    );
+    expect(searchLabel(["name"])).toBe("Search by name");
   });
 });

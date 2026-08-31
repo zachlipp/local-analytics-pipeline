@@ -1,0 +1,212 @@
+.landing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 3rem 0 1rem;
+}
+
+.landing-title {
+  margin: 0;
+  font-size: 3.5rem;
+  letter-spacing: 0.12em;
+}
+
+.landing-subtitle {
+  max-width: 34rem;
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+  font-size: 1.15rem;
+}
+
+.landing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2.5rem;
+}
+
+/* Reserved for the hero images: as wide as the three boxes below it. */
+.carousel {
+  width: 100%;
+  max-width: 60rem;
+  margin-top: 3rem;
+}
+
+.carousel-frame {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.carousel-viewport {
+  flex: 1;
+  overflow: hidden;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+.carousel-track {
+  display: flex;
+  transition: transform 300ms ease;
+}
+
+.carousel-slide {
+  position: relative;
+  flex: 0 0 100%;
+  aspect-ratio: 16 / 9;
+}
+
+.carousel-caption {
+  position: absolute;
+  left: 1.25rem;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  padding: 1rem 1.15rem;
+  border-radius: 6px;
+  background: rgb(38 38 38 / 0.72);
+  color: #fff;
+  text-align: left;
+}
+
+.carousel-caption h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: normal;
+}
+
+.carousel-caption p {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.carousel-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.carousel-arrow {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.carousel-arrow:hover {
+  color: var(--text);
+}
+
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.carousel-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+
+.carousel-dot.is-active {
+  border-color: var(--text);
+  background: var(--text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .carousel-track {
+    transition: none;
+  }
+}
+
+.advantages {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  width: 100%;
+  max-width: 60rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (max-width: 48rem) {
+  .advantages {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Icon left, text right. */
+.advantage {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: left;
+}
+
+.advantage-icon {
+  flex: none;
+  display: flex;
+  color: var(--muted);
+}
+
+.advantage-icon svg {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.advantage-text h2 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: normal;
+}
+
+.advantage-text p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.landing .demo {
+  padding: 0.6rem 1.1rem;
+  border: 1px solid var(--text);
+  border-radius: 6px;
+  background: var(--text);
+  color: var(--bg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.landing .demo:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.landing .demo:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.demo-error {
+  color: #dc2626;
+  font-size: 0.85rem;
+}

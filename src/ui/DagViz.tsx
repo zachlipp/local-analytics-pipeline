@@ -61,21 +61,32 @@ type EdgeHover = { target: string; x: number; y: number };
 export function DagViz({
   dag,
   direction = "LR",
+  showUnreached = false,
 }: {
   dag: Dag;
   direction?: Direction;
+  /** Whether unreached nodes are shown before the user touches the toggle. */
+  showUnreached?: boolean;
 }) {
   // useNodesInitialized and useReactFlow read the React Flow store, which only
   // exists below a provider. <ReactFlow> makes its own, but we need the store
   // in the component that renders it, so the provider goes one level up.
   return (
     <ReactFlowProvider>
-      <DagFlow dag={dag} direction={direction} />
+      <DagFlow dag={dag} direction={direction} showUnreached={showUnreached} />
     </ReactFlowProvider>
   );
 }
 
-function DagFlow({ dag, direction }: { dag: Dag; direction: Direction }) {
+function DagFlow({
+  dag,
+  direction,
+  showUnreached: initialShowUnreached,
+}: {
+  dag: Dag;
+  direction: Direction;
+  showUnreached: boolean;
+}) {
   // constructEdges() mints fresh uuids on every call, so this must be memoised
   // or every render would hand React Flow brand-new edge keys.
   const graph = useMemo(() => toFlowGraph(dag, direction), [dag, direction]);
@@ -117,9 +128,8 @@ function DagFlow({ dag, direction }: { dag: Dag; direction: Direction }) {
   }, [pipeline, results]);
 
   // Unreached means blocked on something upstream, so hiding it leaves the
-  // work that can be done now plus the work already done. Default on: that's
-  // the view worth opening with.
-  const [showUnreached, setShowUnreached] = useState(false);
+  // work that can be done now plus the work already done.
+  const [showUnreached, setShowUnreached] = useState(initialShowUnreached);
   const unreachedCount = [...statusById.values()].filter(
     (s) => s === "UNREACHED",
   ).length;

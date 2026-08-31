@@ -160,8 +160,9 @@ export async function previewTable(
   name: string,
   limit = 5,
   search?: string,
+  columns: string[] = SEARCHABLE,
 ) {
-  const where = await searchClause(engine, name, search?.trim() ?? "");
+  const where = await searchClause(engine, name, search?.trim() ?? "", columns);
   return engine.query(`SELECT * FROM ${quote(name)}${where} LIMIT ${limit}`);
 }
 
@@ -170,11 +171,12 @@ async function searchClause(
   engine: Engine,
   name: string,
   needle: string,
+  searchable: string[],
 ): Promise<string> {
   if (!needle) return "";
 
   const columns = (await engine.columns(name)).filter((column) =>
-    SEARCHABLE.includes(column.toLowerCase()),
+    searchable.includes(column.toLowerCase()),
   );
   if (columns.length === 0) return "";
 
