@@ -139,10 +139,11 @@ function carry(
   }
 
   for (const [name, node] of Object.entries(after.nodes)) {
-    const { file, value, entries } = previous[idWas.get(name) ?? node.id] ?? {};
+    const { file, value, entries, literal } =
+      previous[idWas.get(name) ?? node.id] ?? {};
     // A typed value beats the node's default; nothing typed falls back to it.
-    const kept = { file, value: value ?? results[node.id]?.value, entries };
-    if (kept.file || kept.value !== undefined || kept.entries) {
+    const kept = { file, value: value ?? results[node.id]?.value, entries, literal };
+    if (kept.file || kept.value !== undefined || kept.entries || kept.literal) {
       results[node.id] = kept;
     }
   }

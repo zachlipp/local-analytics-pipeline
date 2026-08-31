@@ -1,5 +1,6 @@
 import { SEARCHABLE, toCsv } from "./csv";
 import { entriesToCsv, toRecords } from "./dataEntry";
+import { literalRecordsToCsv } from "./dataLiteral";
 import { literal, quote, type Engine } from "./engine";
 import type { Pipeline } from "./pipeline";
 import { literalCsv, planRun, type RunTask } from "./runner";
@@ -102,8 +103,12 @@ async function materialize(
       if (!result.file) throw new Error(`No file uploaded for ${name}.`);
       return load(result.file.text);
 
+    // Edited rows win over the node's own, once there are any — the run
+    // store is what the user actually meant, node.data only the starting point.
     case "data_literal":
-      return load(literalCsv(node));
+      return load(
+        result.literal ? literalRecordsToCsv(node, result.literal) : literalCsv(node),
+      );
 
     // A single cell, so an operation can join or compare against it the same
     // way it does anything else.

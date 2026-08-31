@@ -22,3 +22,7 @@ Do not edit Backlog task, draft, document, decision, or milestone markdown files
 
 </CRITICAL_INSTRUCTION>
 <!-- BACKLOG.MD GUIDELINES END -->
+
+## Acceptance Criteria
+
+Never invent acceptance criteria. If I ask you to create a task and I have not specified its acceptance criteria, stop and ask me for them before running `backlog task create`. Do not create the task with placeholder, inferred, or "best guess" criteria and offer to tighten them later.

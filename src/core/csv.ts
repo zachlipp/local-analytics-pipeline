@@ -1,4 +1,6 @@
-export type CsvRow = Record<string, string>;
+// Null is a value a row can hold; written out it is an empty field, which is
+// what read_csv reads back as null.
+export type CsvRow = Record<string, string | null>;
 
 // The columns a preview's search box looks in. Mirrored by the SQL in
 // runPipeline, which searches the same two once a table exists.
@@ -72,8 +74,12 @@ export function csvColumns(csv: string): string[] {
 export function csvRows(csv: string): CsvRow[] {
   const [columns, ...rows] = parseCsv(csv);
   if (!columns) return [];
+  // A field the row never had, and an empty one, are both missing — the same
+  // null read_csv would give them once the file is loaded.
   return rows.map((values) =>
-    Object.fromEntries(columns.map((column, i) => [column, values[i] ?? ""])),
+    Object.fromEntries(
+      columns.map((column, i) => [column, values[i] || null]),
+    ),
   );
 }
 
@@ -93,7 +99,7 @@ export function searchRows(
     const hit = Object.entries(row).some(
       ([column, value]) =>
         SEARCHABLE.includes(column.toLowerCase()) &&
-        value.toLowerCase().includes(needle),
+        (value ?? "").toLowerCase().includes(needle),
     );
     if (hit) found.push(row);
   }

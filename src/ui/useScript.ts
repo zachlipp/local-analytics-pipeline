@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { toCsv } from "@core/csv";
-import { isDocument, type ScriptDocument } from "@core/scripts";
+import { isDocument, type Rows, type ScriptDocument } from "@core/scripts";
 import type { ScriptNode, Schemas } from "@core/schema";
 import { declaredTypes, undeclaredColumns } from "@core/shapes";
 import type { NodeResult } from "@core/status";
@@ -80,7 +80,7 @@ export function useScript(
 
 // Every key any row carries, so a script that omits a field on one row still
 // produces a rectangular CSV.
-function columnsOf(rows: Record<string, string>[]): string[] {
+function columnsOf(rows: Rows): string[] {
   const columns = new Set<string>();
   for (const row of rows) for (const key of Object.keys(row)) columns.add(key);
   return [...columns];

@@ -177,11 +177,17 @@
 
 /* An operation's first rows. A result table can be far wider than the slide,
    so it scrolls sideways inside its own box rather than stretching one. */
+.dag-slide-search-bar {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  justify-content: center;
+  margin: 0.75rem 0 0;
+}
+
 .dag-slide-search {
-  display: block;
   box-sizing: border-box;
   width: min(20rem, 100%);
-  margin: 0.75rem auto 0;
   padding: 0.35rem 0.6rem;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -194,6 +200,22 @@
 .dag-slide-search:focus {
   outline: none;
   border-color: var(--text);
+}
+
+.dag-slide-mode {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.dag-slide-mode[aria-pressed="true"] {
+  border-color: var(--text);
+  color: var(--text);
 }
 
 .dag-slide-preview {
@@ -226,6 +248,12 @@
   background: var(--bg);
 }
 
+/* A missing value reads as missing, rather than as an empty string. */
+.dag-slide-null {
+  color: var(--muted);
+  font-style: italic;
+}
+
 .dag-slide-input {
   display: block;
   box-sizing: border-box;
@@ -244,26 +272,6 @@
 .dag-slide-input:focus {
   outline: none;
   border-color: var(--text);
-}
-
-/* Literals are small by design, but nothing stops a long one — this scrolls
-   inside the slide rather than stretching the frame. */
-.dag-slide-data {
-  display: inline-block;
-  max-width: min(32rem, 100%);
-  max-height: 14rem;
-  margin: 1.25rem auto 0;
-  padding: 0.6rem 1rem 0.6rem 0.4rem;
-  overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  text-align: left;
-  font-size: 0.9rem;
-}
-
-/* Rows are their own paragraphs here; the node view is too cramped for it. */
-.dag-slide-data .dag-literal > li + li {
-  margin-top: 0.4rem;
 }
 
 .dag-slide-empty {

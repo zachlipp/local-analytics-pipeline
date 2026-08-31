@@ -5,19 +5,27 @@ import type { Dag } from "@core/schema";
 export function DagUpload({
   initialSource,
   onDag,
+  onSource,
 }: {
   initialSource?: string;
   /** Fires whenever the parsed DAG changes, so App can render it. */
   onDag?: (dag: Dag | undefined) => void;
+  /** Fires with the raw text the DAG was parsed from — needed to export it. */
+  onSource?: (source: string | undefined) => void;
 }) {
   const [messages, setMessages] = useState<string[]>([]);
   const [dag, setDag] = useState<Dag>();
+  const [source, setSource] = useState<string>();
 
   // Reporting the DAG from one effect rather than from each setDag() call
   // means a new parse path can't forget to tell the parent about it.
   useEffect(() => {
     onDag?.(dag);
   }, [dag, onDag]);
+
+  useEffect(() => {
+    onSource?.(source);
+  }, [source, onSource]);
 
   // Load a DAG on mount, before the user has uploaded anything.
   useEffect(() => {
@@ -28,16 +36,19 @@ export function DagUpload({
       return;
     }
     setDag(result.dag);
+    setSource(initialSource);
   }, [initialSource]);
 
   async function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const result = parseDag(await file.text());
+    const text = await file.text();
+    const result = parseDag(text);
     if (!result.ok) {
       setMessages(result.errors);
       setDag(undefined);
+      setSource(undefined);
       return;
     }
     /*
@@ -50,6 +61,7 @@ export function DagUpload({
 		*/
     // setDag(dangling.length > 0 ? undefined : result.dag);
     setDag(result.dag);
+    setSource(text);
   }
 
   return (

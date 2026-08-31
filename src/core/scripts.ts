@@ -9,7 +9,7 @@ export function scriptPath(src: string): string {
   return `${SCRIPT_DIRECTORY}/${src}.ts`;
 }
 
-export type Row = Record<string, string>;
+export type Row = Record<string, string | null>;
 export type Rows = Row[];
 
 // A file the pipeline hands back to the user rather than a table it can query.

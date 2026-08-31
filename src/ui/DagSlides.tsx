@@ -8,8 +8,9 @@ import { scriptPath } from "@core/scripts";
 import type { Dag, Node, ScriptNode } from "@core/schema";
 import { nodeStatuses } from "@core/status";
 import { DataEntry } from "./DataEntry";
-import { DataLiteral } from "./DataLiteral";
+import { debug } from "./debug";
 import type { Row } from "./duckdb";
+import { EditableDataLiteral } from "./EditableDataLiteral";
 import { list } from "@core/utils";
 import { useNodeResult, useRun } from "./RunState";
 import { useRoute } from "./route";
@@ -192,11 +193,7 @@ function SlideControl({ node, name, pipeline, dag }: ControlProps) {
       return <DataEntry node={node} table={name} />;
 
     case "data_literal":
-      return (
-        <div className="dag-slide-data">
-          <DataLiteral data={node.data} />
-        </div>
-      );
+      return <EditableDataLiteral node={node} />;
 
     case "operation_result":
       return (
@@ -229,7 +226,7 @@ function OperationControl({
   dag: Dag;
 }) {
   const [result] = useNodeResult(node.id);
-  const { run, running, error, preview, search, rows } = useRunPipeline(
+  const { run, running, error, preview, search, query, rows } = useRunPipeline(
     pipeline,
     dag,
   );
@@ -271,7 +268,7 @@ function OperationControl({
         </div>
       )}
       {preview && preview.length > 0 && (
-        <TablePreview rows={preview} search={searchTable} />
+        <TablePreview rows={preview} search={searchTable} sql={query} />
       )}
       {error && <div className="dag-slide-error">{error}</div>}
     </>
@@ -282,61 +279,102 @@ function OperationControl({
 function TablePreview({
   rows,
   search,
+  sql,
 }: {
   rows: Row[];
   // Runs against the whole table, not the rows above — a preview is five rows
   // of a hundred thousand, and searching only those would find nothing.
   search: (query: string) => Promise<Row[]>;
+  // Debug only, and only where there is a database to ask. Absent, the box
+  // stays a search box however the flag is set.
+  sql?: (statement: string) => Promise<Row[]>;
 }) {
   const [query, setQuery] = useState("");
   const [matches, setMatches] = useState<Row[]>();
   const [error, setError] = useState<string>();
+  const [mode, setMode] = useState<"search" | "sql">("search");
+  const raw = debug && sql !== undefined && mode === "sql";
+
+  const show = (found: Row[]) => {
+    setMatches(found);
+    setError(undefined);
+  };
+  const fail = (cause: unknown) =>
+    setError(cause instanceof Error ? cause.message : String(cause));
 
   // Typed a character at a time; each keystroke is a query, so it waits for a
-  // pause and drops anything still in flight when the next one starts.
+  // pause and drops anything still in flight when the next one starts. SQL is
+  // left out of this on purpose: half a statement is not one to run.
   useEffect(() => {
     const needle = query.trim();
-    if (!needle) return;
+    if (raw || !needle) return;
 
     let live = true;
     const timer = setTimeout(() => {
       search(needle)
-        .then((found) => live && setMatches(found))
-        .catch(
-          (cause: unknown) =>
-            live &&
-            setError(cause instanceof Error ? cause.message : String(cause)),
-        );
+        .then((found) => live && show(found))
+        .catch((cause: unknown) => live && fail(cause));
     }, 200);
 
     return () => {
       live = false;
       clearTimeout(timer);
     };
-  }, [query, search]);
+  }, [query, search, raw]);
+
+  const clear = () => {
+    setMatches(undefined);
+    setError(undefined);
+  };
 
   const shown = matches ?? rows;
   const columns = Object.keys(shown[0] ?? rows[0] ?? {});
 
   return (
     <>
-      <input
-        className="dag-slide-search"
-        type="search"
-        value={query}
-        placeholder="Search by name or EIN"
-        aria-label="Search by name or EIN"
-        onChange={(e) => {
-          setQuery(e.target.value);
-          if (!e.target.value.trim()) {
-            setMatches(undefined);
-            setError(undefined);
-          }
+      <form
+        className="dag-slide-search-bar"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!raw || !sql) return;
+          const statement = query.trim();
+          if (!statement) return clear();
+          sql(statement).then(show).catch(fail);
         }}
-      />
+      >
+        <input
+          className="dag-slide-search"
+          type={raw ? "text" : "search"}
+          value={query}
+          placeholder={
+            raw ? "SELECT * FROM … — enter to run" : "Search by name or EIN"
+          }
+          aria-label={raw ? "SQL to run" : "Search by name or EIN"}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            if (!e.target.value.trim()) clear();
+          }}
+        />
+        {debug && sql && (
+          <button
+            type="button"
+            className="dag-slide-mode"
+            aria-pressed={raw}
+            onClick={() => {
+              setMode(raw ? "search" : "sql");
+              setQuery("");
+              clear();
+            }}
+          >
+            SQL
+          </button>
+        )}
+      </form>
       {error && <div className="dag-slide-error">{error}</div>}
       {shown.length === 0 ? (
-        <div className="dag-slide-note">No rows match {`"${query}"`}.</div>
+        <div className="dag-slide-note">
+          {raw ? "That query returned no rows." : `No rows match "${query}".`}
+        </div>
       ) : (
         <TableBody columns={columns} rows={shown} />
       )}
@@ -360,7 +398,9 @@ function TableBody({ columns, rows }: { columns: string[]; rows: Row[] }) {
             // Result rows carry no id, and nothing reorders a read-only table.
             <tr key={i}>
               {columns.map((column) => (
-                <td key={column}>{row[column]}</td>
+                <td key={column}>
+                  {row[column] ?? <span className="dag-slide-null">null</span>}
+                </td>
               ))}
             </tr>
           ))}

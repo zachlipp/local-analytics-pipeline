@@ -23,3 +23,8 @@ export function runPipeline(
 export function previewTable(name: string, limit = 5, search?: string) {
   return preview(wasmEngine, name, limit, search);
 }
+
+// Debug only: whatever the user typed, straight to DuckDB.
+export function runQuery(sql: string) {
+  return wasmEngine.query(sql);
+}

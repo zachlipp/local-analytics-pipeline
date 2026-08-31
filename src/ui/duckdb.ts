@@ -120,7 +120,7 @@ async function hasTable(table: string): Promise<boolean> {
 // DESCRIBE is a catalog lookup, so this costs nothing on a big table.
 export async function tableColumns(table: string): Promise<string[]> {
   const rows = await queryRows(`DESCRIBE ${quote(table)}`);
-  return rows.map((row) => row.column_name);
+  return rows.map((row) => String(row.column_name));
 }
 
 /** Forget a table's cached source, for whoever overwrites it by other means. */

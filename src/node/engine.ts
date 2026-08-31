@@ -56,7 +56,7 @@ export async function nodeEngine(): Promise<NodeEngine> {
 
     async columns(table: string): Promise<string[]> {
       const rows = await query(`DESCRIBE ${quote(table)}`);
-      return rows.map((row) => row.column_name);
+      return rows.map((row) => String(row.column_name));
     },
 
     close() {

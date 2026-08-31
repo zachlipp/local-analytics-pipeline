@@ -65,6 +65,12 @@ h1 {
   color: var(--text);
 }
 
+.export-error {
+  margin-left: 0.5rem;
+  color: #dc2626;
+  font-size: 0.85rem;
+}
+
 /* Placeholder layout: a flat list of boxes until this becomes a real graph. */
 .nodes {
   display: flex;

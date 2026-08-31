@@ -1,4 +1,6 @@
-export type Row = Record<string, string>;
+// A missing value stays missing: DuckDB hands back null, and nothing on the
+// way to the screen turns that into an empty string.
+export type Row = Record<string, string | null>;
 
 // The one thing every part of this project needs from a database, and nothing
 // more. duckdb-wasm in the browser, @duckdb/node-api on the command line.
@@ -65,7 +67,9 @@ export async function describeQuery(
 ): Promise<Record<string, string>> {
   const rows = await query(`DESCRIBE (${statement(sql)})`);
   const columns: Record<string, string> = {};
-  for (const row of rows) columns[row.column_name] = row.column_type;
+  for (const row of rows) {
+    columns[String(row.column_name)] = String(row.column_type);
+  }
   return columns;
 }
 

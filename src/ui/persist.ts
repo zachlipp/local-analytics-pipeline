@@ -7,16 +7,26 @@ import type { NodeResult } from "@core/status";
  * Tables and row counts live in DuckDB, which doesn't survive a reload either,
  * so storing them would only produce a node claiming a table that isn't there.
  */
-export type Persisted = Pick<NodeResult, "file" | "value" | "entries">;
+export type Persisted = Pick<NodeResult, "file" | "value" | "entries" | "literal">;
 
 export function durable(result: NodeResult): Persisted {
-  return { file: result.file, value: result.value, entries: result.entries };
+  return {
+    file: result.file,
+    value: result.value,
+    entries: result.entries,
+    literal: result.literal,
+  };
 }
 
 // Field-by-field on purpose: patches replace these wholesale, so an unchanged
 // field is the same object and a changed one never is.
 export function sameDurable(a: Persisted, b?: Persisted): boolean {
-  return a.file === b?.file && a.value === b?.value && a.entries === b?.entries;
+  return (
+    a.file === b?.file &&
+    a.value === b?.value &&
+    a.entries === b?.entries &&
+    a.literal === b?.literal
+  );
 }
 
 const DATABASE = "lap";
@@ -68,6 +78,7 @@ export async function saveResult(id: string, result: Persisted): Promise<void> {
   if (result.file) stored.file = result.file;
   if (result.value !== undefined) stored.value = result.value;
   if (result.entries) stored.entries = result.entries;
+  if (result.literal) stored.literal = result.literal;
 
   await transact("readwrite", (store) => store.put(stored, id));
 }

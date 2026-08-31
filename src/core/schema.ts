@@ -30,11 +30,14 @@ const FileNode = Described.extend({
   schema: z.string().optional(),
   // Used if CORS prevents direct download (e.g. the IRS)
   source: z.url().optional(),
+  // Written to <node>.csv in the export zip, if this node has a table.
+  export: z.boolean().default(false),
 });
 
 const UserInputNode = Described.extend({
   kind: z.literal("user_input"),
   user_input: z.string().optional(),
+  export: z.boolean().default(false),
 });
 
 // Options are declared rather than inferred from the source columns: a node
@@ -52,6 +55,7 @@ const UserDataEntryNode = Described.extend({
   // Frozen column to the href its cell links to. `{column}` is replaced with
   // that record's value; the rest of the template is used as written.
   links: z.record(z.string(), z.string()).default({}),
+  export: z.boolean().default(false),
 }).superRefine((node, ctx) => {
   // frozenColumns() in ./dataEntry, inlined to keep this module free of it.
   const frozen = node.frozen.length > 0 ? node.frozen : [node.key];
@@ -68,6 +72,7 @@ const UserDataEntryNode = Described.extend({
 
 const OperationResultNode = Described.extend({
   kind: z.literal("operation_result"),
+  export: z.boolean().default(false),
 });
 
 // A node whose value comes from JavaScript in this project rather than from a
@@ -92,6 +97,7 @@ const ScriptNode = Described.extend({
   // Recorded by hand, for a reader who wants to know what leaves the machine.
   // Nothing verifies it.
   network: z.boolean().default(false),
+  export: z.boolean().default(false),
 });
 
 const DataLiteralRow = z.record(z.string(), z.string());
@@ -100,6 +106,7 @@ const DataLiteralNode = Described.extend({
   // Column name for bare-string rows, which carry none of their own.
   column: z.string().default("value"),
   data: z.array(z.union([DataLiteralRow, z.string()])),
+  export: z.boolean().default(false),
 });
 
 const OperationSchema = Described.extend({

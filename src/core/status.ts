@@ -1,3 +1,4 @@
+import type { LiteralRecord } from "./dataLiteral";
 import type { Pipeline, PipelineStep } from "./pipeline";
 
 export type Status =
@@ -27,6 +28,9 @@ export type NodeResult = {
   value?: string;
   // Committed data_entry marks, keyed by record. One row at a time.
   entries?: Record<string, string[]>;
+  // Edited data_literal rows, replacing node.data wholesale once the user has
+  // touched any record. Absent means the node's own rows are still in force.
+  literal?: LiteralRecord[];
   /** The DuckDB table the runner materialized this node into. */
   table?: string;
   /** Rows in that table. */
@@ -78,8 +82,8 @@ function statusOf(
   // operation_result ever succeeds.
   if (result?.file || result?.value || result?.table) return "SUCCEEDED";
 
-  // A literal's value is written in the pipeline definition — there is nothing
-  // to wait for and no way for it to fail.
+  // A literal's rows are written in the pipeline definition, or edited in the
+  // run — either way there is nothing to wait for and no way for it to fail.
   if (step.node.kind === "data_literal") return "SUCCEEDED";
 
   const ready = step.inputs.every((i) => statuses.get(i) === "SUCCEEDED");

@@ -1,4 +1,5 @@
 import { toCsv, type CsvRow } from "./csv";
+import type { Row } from "./engine";
 import type { DataEntryNode } from "./schema";
 
 // cells line up with the node's frozen columns; links are keyed by column name
@@ -30,12 +31,13 @@ export function linkColumns(node: DataEntryNode): string[] {
 }
 
 export function toRecords(
-  rows: Record<string, string>[],
+  rows: Row[],
   node: DataEntryNode,
 ): EntryRecord[] {
   const frozen = frozenColumns(node);
   return rows.map((row, i) => ({
     key: row[node.key] ?? String(i),
+    // A null column has nothing to show; the cell is blank and stays blank.
     cells: frozen.map((column) => row[column] ?? ""),
     links: recordLinks(node, row),
   }));
@@ -43,7 +45,7 @@ export function toRecords(
 
 function recordLinks(
   node: DataEntryNode,
-  row: Record<string, string>,
+  row: Row,
 ): Record<string, string> | undefined {
   const links: Record<string, string> = {};
   for (const [column, template] of Object.entries(node.links)) {
@@ -57,7 +59,7 @@ function recordLinks(
 // the named columns has a value gets no link rather than an empty search.
 function resolveLink(
   template: string,
-  row: Record<string, string>,
+  row: Row,
 ): string | undefined {
   let found = false;
   const href = template.replace(FIELD, (_, column: string) => {
