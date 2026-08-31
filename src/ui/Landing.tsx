@@ -28,20 +28,8 @@ const SLIDES = [
   {
     src: mountain,
     alt: "Placeholder one",
-    title: "Feature one",
-    body: "Placeholder — a sentence or two about what this screen shows and why it matters.",
-  },
-  {
-    src: mountain,
-    alt: "Placeholder two",
-    title: "Feature two",
-    body: "Placeholder — a sentence or two about what this screen shows and why it matters.",
-  },
-  {
-    src: mountain,
-    alt: "Placeholder three",
-    title: "Feature three",
-    body: "Placeholder — a sentence or two about what this screen shows and why it matters.",
+    title: "Play to users' strengths",
+    body: "Engineers write SQL. Users use the browser. No spreadsheets and no hosting costs - everyone wins.",
   },
 ];
 
@@ -49,7 +37,7 @@ export function Landing({ onDemo }: { onDemo: (source: string) => void }) {
   return (
     <section className="landing">
       <h1 className="landing-title">By Ear Analytics</h1>
-      <p className="landing-subtitle">Perform without the spreadsheet.</p>
+      <p className="landing-subtitle">Perform without the sheets.</p>
 
       <Carousel />
 
@@ -77,18 +65,21 @@ export function Landing({ onDemo }: { onDemo: (source: string) => void }) {
 function Carousel() {
   const [index, setIndex] = useState(0);
   const last = SLIDES.length - 1;
+  const many = SLIDES.length > 1;
 
   return (
     <div className="carousel">
       <div className="carousel-frame">
-        <button
-          type="button"
-          className="carousel-arrow"
-          onClick={() => setIndex((i) => (i === 0 ? last : i - 1))}
-          aria-label="Previous slide"
-        >
-          &#8249;
-        </button>
+        {many && (
+          <button
+            type="button"
+            className="carousel-arrow"
+            onClick={() => setIndex((i) => (i === 0 ? last : i - 1))}
+            aria-label="Previous slide"
+          >
+            &#8249;
+          </button>
+        )}
 
         <div className="carousel-viewport">
           <div
@@ -111,28 +102,34 @@ function Carousel() {
           </div>
         </div>
 
-        <button
-          type="button"
-          className="carousel-arrow"
-          onClick={() => setIndex((i) => (i === last ? 0 : i + 1))}
-          aria-label="Next slide"
-        >
-          &#8250;
-        </button>
-      </div>
-
-      <div className="carousel-dots">
-        {SLIDES.map((slide, i) => (
+        {many && (
           <button
             type="button"
-            key={slide.title}
-            className={i === index ? "carousel-dot is-active" : "carousel-dot"}
-            onClick={() => setIndex(i)}
-            aria-label={`Go to slide ${i + 1}`}
-            aria-current={i === index}
-          />
-        ))}
+            className="carousel-arrow"
+            onClick={() => setIndex((i) => (i === last ? 0 : i + 1))}
+            aria-label="Next slide"
+          >
+            &#8250;
+          </button>
+        )}
       </div>
+
+      {many && (
+        <div className="carousel-dots">
+          {SLIDES.map((slide, i) => (
+            <button
+              type="button"
+              key={slide.title}
+              className={
+                i === index ? "carousel-dot is-active" : "carousel-dot"
+              }
+              onClick={() => setIndex(i)}
+              aria-label={`Go to slide ${i + 1}`}
+              aria-current={i === index}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
