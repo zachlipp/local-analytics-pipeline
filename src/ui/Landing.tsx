@@ -8,38 +8,51 @@ import mountain from "../assets/mountain.png";
 const ADVANTAGES = [
   {
     icon: <GraphIcon />,
-    title: "Advantage two",
-    body: "Placeholder — describe the second advantage of this approach here.",
-  },
-  {
-    icon: <LockIcon />,
-    title: "Totally private",
-    body: "Your data never leaves your computer.",
+    title: "Visualize your data pipelines.",
+    body: "You define how entities relate to one another. We construct your execution graph.",
   },
   {
     icon: <BoltIcon />,
-    title: "Advantage three",
-    body: "Placeholder — describe the third advantage of this approach here.",
+    title: "No code feel. Full code benefits.",
+    body: "Define schemas, write SQL, make tests, leverage version control - all without end users needing to know any of it",
+  },
+  {
+    icon: <LockIcon />,
+    title: "Totally private.",
+    body: "The SQL execution engine is the browser. Data never leaves users' computers.",
   },
 ];
 
-// Placeholder slides, waiting on the real screenshots.
-const SLIDES = [
-  {
-    src: mountain,
-    alt: "Placeholder one",
-    title: "Play to users' strengths",
-    body: "Engineers write SQL. Users use the browser. No spreadsheets and no hosting costs - everyone wins.",
-  },
-];
+function UserStoryText() {
+  return (
+    <>
+      <p>
+        A non-technical domain expert has a data pipeline that's gotten a bit
+        out of hand. They bring in an engineer to make sense of it.
+      </p>
+      <p>
+        There's one problem:{" "}
+        <strong>They don't speak the same language.</strong>
+      </p>
+
+      <p>
+        Well, metaphorically at least. Domain experts may rely on a
+        sophisticated spreadsheet that couples tons of bespoke logic with data
+        spanning years. Engineers separate operations from data.{" "}
+      </p>
+      <p>
+        This project marries these two worlds. Engineers write SQL. End users
+        get to drag and drop files in their browsers.
+      </p>
+    </>
+  );
+}
 
 export function Landing({ onDemo }: { onDemo: (source: string) => void }) {
   return (
     <section className="landing">
       <h1 className="landing-title">By Ear Analytics</h1>
       <p className="landing-subtitle">Perform without the sheets.</p>
-
-      <Carousel />
 
       <ul className="advantages">
         {ADVANTAGES.map((advantage) => (
@@ -55,82 +68,12 @@ export function Landing({ onDemo }: { onDemo: (source: string) => void }) {
         ))}
       </ul>
 
+      <UserStoryText />
+
       <div className="landing-actions">
         <DemoButton onDemo={onDemo} />
       </div>
     </section>
-  );
-}
-
-function Carousel() {
-  const [index, setIndex] = useState(0);
-  const last = SLIDES.length - 1;
-  const many = SLIDES.length > 1;
-
-  return (
-    <div className="carousel">
-      <div className="carousel-frame">
-        {many && (
-          <button
-            type="button"
-            className="carousel-arrow"
-            onClick={() => setIndex((i) => (i === 0 ? last : i - 1))}
-            aria-label="Previous slide"
-          >
-            &#8249;
-          </button>
-        )}
-
-        <div className="carousel-viewport">
-          <div
-            className="carousel-track"
-            style={{ transform: `translateX(-${index * 100}%)` }}
-          >
-            {SLIDES.map((slide, i) => (
-              <div
-                className="carousel-slide"
-                key={slide.title}
-                aria-hidden={i !== index}
-              >
-                <img src={slide.src} alt={slide.alt} />
-                <div className="carousel-caption">
-                  <h2>{slide.title}</h2>
-                  <p>{slide.body}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {many && (
-          <button
-            type="button"
-            className="carousel-arrow"
-            onClick={() => setIndex((i) => (i === last ? 0 : i + 1))}
-            aria-label="Next slide"
-          >
-            &#8250;
-          </button>
-        )}
-      </div>
-
-      {many && (
-        <div className="carousel-dots">
-          {SLIDES.map((slide, i) => (
-            <button
-              type="button"
-              key={slide.title}
-              className={
-                i === index ? "carousel-dot is-active" : "carousel-dot"
-              }
-              onClick={() => setIndex(i)}
-              aria-label={`Go to slide ${i + 1}`}
-              aria-current={i === index}
-            />
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
 
