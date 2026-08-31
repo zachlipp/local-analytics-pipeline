@@ -1,191 +1,446 @@
+/* Everything here draws on the same tokens the graph canvas uses, so a node
+   on the landing page and a node in DagViz are the same object. */
 .landing {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 3rem 0 1rem;
+  max-width: 64rem;
+  margin: 0 auto;
 }
 
-.landing-title {
-  margin: 0;
-  font-size: 3.5rem;
-  letter-spacing: 0.12em;
+.landing [data-kind] {
+  --dag-kind: var(--dag-line);
 }
 
-.landing-subtitle {
-  max-width: 34rem;
-  margin: 0.5rem 0 0;
+.landing [data-kind="file"] {
+  --dag-kind: var(--kind-file);
+}
+
+.landing [data-kind="user_input"] {
+  --dag-kind: var(--kind-user-input);
+}
+
+.landing [data-kind="operation_result"] {
+  --dag-kind: var(--kind-operation-result);
+}
+
+.landing [data-kind="data_literal"] {
+  --dag-kind: var(--kind-data-literal);
+}
+
+.landing [data-kind="data_entry"] {
+  --dag-kind: var(--kind-data-entry);
+}
+
+.landing .eyebrow {
+  margin: 0 0 1rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   color: var(--muted);
-  font-size: 1.15rem;
 }
 
-.landing-actions {
+.landing section {
+  margin-top: 5.5rem;
+}
+
+/* Hero */
+
+.hero {
+  padding-top: 1rem;
+}
+
+.hero-title {
+  margin: 0;
+  font-size: clamp(2.5rem, 7vw, 4rem);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.1;
+}
+
+.hero-lead {
+  max-width: 36rem;
+  margin: 1.25rem 0 0;
+  font-size: 1.15rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.hero-actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
   align-items: center;
   gap: 1rem;
-  margin-top: 2.5rem;
+  margin-top: 2rem;
 }
 
-/* Reserved for the hero images: as wide as the three boxes below it. */
-.carousel {
-  width: 100%;
-  max-width: 60rem;
-  margin-top: 3rem;
-}
-
-.carousel-frame {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.carousel-viewport {
-  flex: 1;
-  overflow: hidden;
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-}
-
-.carousel-track {
-  display: flex;
-  transition: transform 300ms ease;
-}
-
-.carousel-slide {
-  position: relative;
-  flex: 0 0 100%;
-  aspect-ratio: 16 / 9;
-}
-
-.carousel-caption {
-  position: absolute;
-  left: 1.25rem;
-  right: 1.25rem;
-  bottom: 1.25rem;
-  padding: 1rem 1.15rem;
+.hero-link {
+  padding: 0.6rem 1.1rem;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: rgb(38 38 38 / 0.72);
-  color: #fff;
-  text-align: left;
-}
-
-.carousel-caption h2 {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: normal;
-}
-
-.carousel-caption p {
-  margin: 0.35rem 0 0;
-  font-size: 0.9rem;
-  line-height: 1.45;
-}
-
-.carousel-slide img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.carousel-arrow {
-  flex: none;
-  width: 2rem;
-  height: 2rem;
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  background: none;
-  color: var(--muted);
-  font-size: 1.25rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.carousel-arrow:hover {
   color: var(--text);
+  font-size: 0.95rem;
+  text-decoration: none;
 }
 
-.carousel-dots {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 0.9rem;
-}
-
-.carousel-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  background: none;
-  cursor: pointer;
-}
-
-.carousel-dot.is-active {
+.hero-link:hover {
   border-color: var(--text);
-  background: var(--text);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .carousel-track {
-    transition: none;
+/* The hero canvas: the graph view's nodes, dots and edges, at rest. */
+
+.canvas {
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  margin: 3rem 0 0;
+}
+
+.canvas-frame {
+  position: relative;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: var(--dag-canvas);
+  background-image: radial-gradient(var(--dag-dot) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+.canvas svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* With a spreadsheet to wipe away, the frame is sized for the media and the
+   graph is centred in it. Without one, the graph sets the height itself. */
+.canvas-frame[data-before] {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 5 / 2;
+}
+
+.canvas-frame[data-before] svg {
+  grid-area: 1 / 1;
+}
+
+/* The layer the wipe peels off. It sits inside the frame's padding and is
+   contained, not cropped, so the sheet tabs along its bottom survive. */
+.before {
+  grid-area: 1 / 1;
+  position: absolute;
+  inset: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.before img,
+.before video {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  object-fit: contain;
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--dag-shadow);
+}
+
+.before-label {
+  flex: none;
+  order: -1;
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.canvas-edge path {
+  fill: none;
+  stroke: var(--dag-line);
+  stroke-width: 1.5;
+}
+
+.canvas-edge .arrow {
+  fill: var(--dag-line);
+  stroke: none;
+}
+
+.canvas-node rect {
+  fill: var(--dag-surface);
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.canvas-node-bar,
+.canvas-node-dot {
+  fill: var(--dag-kind);
+  stroke: none;
+}
+
+.canvas-node-name {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--text);
+}
+
+.canvas-node-kind {
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: var(--muted);
+}
+
+.canvas figcaption {
+  margin-top: 1rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* One sweep, two jobs: it wipes the spreadsheet away and reveals each node
+   as its edge passes. */
+@media (prefers-reduced-motion: no-preference) {
+  .canvas-node,
+  .canvas-edge {
+    animation: reveal 600ms ease-out calc(var(--hold) + var(--at, 0ms)) both;
+  }
+
+  .before {
+    animation: wipe var(--sweep) var(--ease) var(--hold) both;
+  }
+
+  @keyframes reveal {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes wipe {
+    from {
+      clip-path: inset(0 0 0 0);
+    }
+    to {
+      clip-path: inset(0 0 0 100%);
+    }
   }
 }
 
-.advantages {
+/* No motion: the spreadsheet is never wiped, so it never covers the graph. */
+@media (prefers-reduced-motion: reduce) {
+  .before {
+    display: none;
+  }
+}
+
+/* Story */
+
+.story-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  width: 100%;
-  max-width: 60rem;
-  margin: 1rem 0 0;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 3rem;
+  align-items: start;
+}
+
+.story-lead p {
+  max-width: 34rem;
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.story-split {
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
-@media (max-width: 48rem) {
-  .advantages {
-    grid-template-columns: 1fr;
-  }
+.story-split li {
+  padding: 0 0 1rem 0.9rem;
+  border-left: 3px solid var(--dag-kind);
 }
 
-/* Icon left, text right. */
-.advantage {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.9rem;
-  padding: 1.1rem 1.2rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  text-align: left;
-}
-
-.advantage-icon {
-  flex: none;
-  display: flex;
+.story-split p {
+  margin: 0.4rem 0 0;
+  font-size: 0.92rem;
   color: var(--muted);
 }
 
+/* The kind label from a graph node: a coloured dot, then small mono caps. */
+.tag,
+.kind dt {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tag::before,
+.kind dt::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--dag-kind);
+}
+
+/* Two hands */
+
+.two-hands {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 1.5rem;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--dag-kind);
+  border-radius: 8px;
+  background: var(--dag-surface);
+  box-shadow: var(--dag-shadow);
+}
+
+.panel pre {
+  margin: 0;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.panel-note {
+  margin: auto 0 0;
+  padding-top: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.performance {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.performance li {
+  position: relative;
+  padding: 0 0 0.9rem 1.9rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  counter-increment: step;
+}
+
+.performance li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0.15rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+/* Advantages */
+
+.advantages {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  margin: 0;
+  padding: 2rem 0 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+}
+
+.advantage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.advantage-icon {
+  display: flex;
+  color: var(--dag-accent);
+}
+
 .advantage-icon svg {
-  width: 1.6rem;
-  height: 1.6rem;
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 .advantage-text h2 {
   margin: 0;
   font-size: 1rem;
+  line-height: 1.35;
   letter-spacing: normal;
 }
 
 .advantage-text p {
-  margin: 0.35rem 0 0;
-  color: var(--muted);
+  margin: 0.5rem 0 0;
   font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--muted);
 }
+
+/* Node kinds */
+
+.kinds {
+  margin: 0;
+}
+
+.kind {
+  display: grid;
+  grid-template-columns: 14rem 1fr;
+  gap: 2rem;
+  padding: 0.9rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.kind dt {
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.kind dd {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* Closer */
+
+.closer {
+  padding: 2.5rem 0 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.closer h2 {
+  margin: 0;
+  font-size: 1.6rem;
+  letter-spacing: 0.06em;
+}
+
+.closer p {
+  max-width: 32rem;
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+}
+
+/* Demo button */
 
 .landing .demo {
   padding: 0.6rem 1.1rem;
@@ -209,4 +464,22 @@
 .demo-error {
   color: #dc2626;
   font-size: 0.85rem;
+}
+
+@media (max-width: 52rem) {
+  .story-grid,
+  .two-hands,
+  .advantages {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .kind {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+
+  .landing section {
+    margin-top: 3.5rem;
+  }
 }

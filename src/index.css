@@ -4,6 +4,20 @@
   --bg: #fff;
   --border: #d6d5da;
 
+  --dag-surface: #fff;
+  --dag-canvas: #fbfbfc;
+  --dag-dot: #dcdce2;
+  --dag-line: #b1b1b7;
+  --dag-accent: #5b6cff;
+  --dag-shadow: 0 1px 2px rgb(8 6 13 / 6%), 0 4px 12px rgb(8 6 13 / 6%);
+  --dag-shadow-hover: 0 2px 4px rgb(8 6 13 / 8%), 0 8px 20px rgb(8 6 13 / 10%);
+
+  --kind-file: #3b82f6;
+  --kind-user-input: #f59e0b;
+  --kind-operation-result: #8b5cf6;
+  --kind-data-literal: red;
+  --kind-data-entry: var(--dag-line);
+
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
@@ -19,6 +33,14 @@
     --muted: #9ca3af;
     --bg: #16171d;
     --border: #3a3c47;
+
+    --dag-surface: #1e202a;
+    --dag-canvas: #121319;
+    --dag-dot: #2c2e38;
+    --dag-line: #575a66;
+    --dag-accent: #7c8aff;
+    --dag-shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 4px 12px rgb(0 0 0 / 30%);
+    --dag-shadow-hover: 0 2px 4px rgb(0 0 0 / 45%), 0 8px 20px rgb(0 0 0 / 40%);
   }
 }
 

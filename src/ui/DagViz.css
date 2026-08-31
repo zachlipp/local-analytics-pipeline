@@ -10,14 +10,6 @@
  */
 
 .dag-viz {
-  --dag-surface: #fff;
-  --dag-canvas: #fbfbfc;
-  --dag-dot: #dcdce2;
-  --dag-line: #b1b1b7;
-  --dag-accent: #5b6cff;
-  --dag-shadow: 0 1px 2px rgb(8 6 13 / 6%), 0 4px 12px rgb(8 6 13 / 6%);
-  --dag-shadow-hover: 0 2px 4px rgb(8 6 13 / 8%), 0 8px 20px rgb(8 6 13 / 10%);
-
   /* The edge tooltip is positioned against this box. */
   position: relative;
   height: 70vh;
@@ -27,18 +19,6 @@
   border-radius: 10px;
   overflow: hidden;
   background: var(--dag-canvas);
-}
-
-@media (prefers-color-scheme: dark) {
-  .dag-viz {
-    --dag-surface: #1e202a;
-    --dag-canvas: #121319;
-    --dag-dot: #2c2e38;
-    --dag-line: #575a66;
-    --dag-accent: #7c8aff;
-    --dag-shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 4px 12px rgb(0 0 0 / 30%);
-    --dag-shadow-hover: 0 2px 4px rgb(0 0 0 / 45%), 0 8px 20px rgb(0 0 0 / 40%);
-  }
 }
 
 /* Toolbar ---------------------------------------------------------------- */
@@ -109,19 +89,19 @@
 }
 
 .dag-node[data-kind="file"] {
-  --dag-kind: #3b82f6;
+  --dag-kind: var(--kind-file);
 }
 
 .dag-node[data-kind="user_input"] {
-  --dag-kind: #f59e0b;
+  --dag-kind: var(--kind-user-input);
 }
 
 .dag-node[data-kind="operation_result"] {
-  --dag-kind: #8b5cf6;
+  --dag-kind: var(--kind-operation-result);
 }
 
 .dag-node[data-kind="data_literal"] {
-  --dag-kind: red;
+  --dag-kind: var(--kind-data-literal);
 }
 
 .dag-node:hover {
