@@ -10,7 +10,7 @@ h1 {
 }
 
 .subtitle {
-  margin: 0.25rem 0 2.5rem;
+  margin: 0 0 1em;
   color: var(--muted);
 }
 
@@ -45,7 +45,7 @@ h1 {
 .view-toggle {
   display: flex;
   gap: 0.5rem;
-  margin: 2rem 0 0;
+  margin: 0 0 0;
 }
 
 .view-toggle button {

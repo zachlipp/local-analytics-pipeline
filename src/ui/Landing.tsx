@@ -120,9 +120,9 @@ export function Landing({ onDemo }: { onDemo: (source: string) => void }) {
           </p>
           <p>
             The end product is a private data pipeline that's defined once by a
-            software engineer and run as often as needed by domain experts. The
-            expressiveness of SQL with editable tables, data entry, and private,
-            in-browser execution.
+            software engineer and run as often as needed by domain experts. It
+            bundles the expressiveness of SQL, the interativity of browsers and
+            private, in-browser execution.
           </p>
         </div>
       </section>

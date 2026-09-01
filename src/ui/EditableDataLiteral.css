@@ -1,6 +1,7 @@
 /* The slide's editable counterpart to .dag-slide-data. Its own box rather
    than a variant of that one — it holds inputs and a delete button, not just
-   text, and never appears on the canvas. */
+   text, and never appears on the canvas. The table itself is .entry-grid,
+   borrowed from data entry. */
 .literal-editor {
   display: flex;
   flex-direction: column;
@@ -10,75 +11,46 @@
   margin: 1.25rem auto 0;
 }
 
-.literal-editor-records {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
+.literal-grid {
   width: 100%;
   max-height: 20rem;
-  margin: 0;
-  padding: 0;
-  overflow: auto;
-  list-style: none;
 }
 
-.literal-editor-record {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  padding: 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+/* The input carries the cell's padding, so a click anywhere in it lands in the field. */
+.literal-grid td {
+  padding: 0;
   text-align: left;
 }
 
-.literal-editor-fields {
-  display: flex;
-  flex: 1;
-  flex-wrap: wrap;
-  gap: 0.5rem 0.75rem;
-}
-
-.literal-editor-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  font-size: 0.85rem;
-}
-
-.literal-editor-key {
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 0.75rem;
-}
-
-.literal-editor-field input {
+.literal-grid td input[type="text"] {
   box-sizing: border-box;
+  width: 100%;
   min-width: 8rem;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
+  padding: 0.3rem 0.5rem;
+  border: none;
+  background: none;
   color: var(--text);
   font: inherit;
   font-family: var(--mono);
-  font-size: 0.85rem;
 }
 
-.literal-editor-field input:focus {
-  outline: none;
-  border-color: var(--text);
+.literal-grid td input[type="text"]:focus {
+  outline: 1px solid var(--text);
+  outline-offset: -1px;
 }
 
-/* Sits beside the fields rather than above them, so it stays reachable
-   without the row growing taller than one line of inputs needs it to. */
+.literal-grid .literal-grid-actions {
+  width: 1px;
+  padding: 0 0.3rem;
+}
+
 .literal-editor-remove {
-  flex: none;
+  display: block;
   width: 1.6rem;
   height: 1.6rem;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 4px;
-  background: var(--bg);
+  background: none;
   color: var(--muted);
   cursor: pointer;
   font-size: 1rem;
@@ -104,4 +76,12 @@
 
 .literal-editor-add:hover {
   border-color: var(--text);
+}
+
+/* Data entry hides .entry-grid here for its 18rem frozen column; this table fits. */
+/* TODO: consolidate breakpoints into one shared rule. */
+@media (max-width: 30rem) and (orientation: portrait) {
+  .literal-grid {
+    display: block;
+  }
 }

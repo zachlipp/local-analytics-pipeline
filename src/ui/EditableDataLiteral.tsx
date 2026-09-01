@@ -9,40 +9,55 @@ export function EditableDataLiteral({ node }: { node: DataLiteralNode }) {
 
   return (
     <div className="literal-editor">
+      <div className="entry-grid literal-grid">
+        <table>
+          <thead>
+            <tr>
+              {editor.columns.map((column) => (
+                <th key={column}>{column}</th>
+              ))}
+              <th className="literal-grid-actions" />
+            </tr>
+          </thead>
+
+          <tbody>
+            {editor.records.map((record, i) => (
+              // Rows carry no id of their own; the list's order is the identity.
+              <tr key={i}>
+                {editor.columns.map((column) => (
+                  <td key={column}>
+                    <input
+                      type="text"
+                      value={record[column] ?? ""}
+                      onChange={(e) =>
+                        editor.setField(i, column, e.target.value)
+                      }
+                      aria-label={`${column}, row ${i + 1}`}
+                    />
+                  </td>
+                ))}
+                <td className="literal-grid-actions">
+                  <button
+                    type="button"
+                    className="literal-editor-remove"
+                    onClick={() => editor.remove(i)}
+                    aria-label={`Delete row ${i + 1}`}
+                  >
+                    &times;
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       {editor.records.length === 0 && (
-        <div className="dag-slide-note">No records yet.</div>
+        <div className="dag-slide-note">No rows yet.</div>
       )}
 
-      <ul className="literal-editor-records">
-        {editor.records.map((record, i) => (
-          // Records carry no id of their own; the list's order is the identity.
-          <li key={i} className="literal-editor-record">
-            <div className="literal-editor-fields">
-              {editor.columns.map((column) => (
-                <label key={column} className="literal-editor-field">
-                  <span className="literal-editor-key">{column}</span>
-                  <input
-                    type="text"
-                    value={record[column] ?? ""}
-                    onChange={(e) => editor.setField(i, column, e.target.value)}
-                  />
-                </label>
-              ))}
-            </div>
-            <button
-              type="button"
-              className="literal-editor-remove"
-              onClick={() => editor.remove(i)}
-              aria-label="Delete record"
-            >
-              &times;
-            </button>
-          </li>
-        ))}
-      </ul>
-
       <button type="button" className="literal-editor-add" onClick={editor.add}>
-        Add record
+        Add row
       </button>
     </div>
   );

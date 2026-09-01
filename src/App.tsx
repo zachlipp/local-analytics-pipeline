@@ -9,7 +9,6 @@ import { Landing } from "@ui/Landing";
 import { DagSlides } from "@ui/DagSlides";
 import { Wip } from "@ui/Wip";
 import { DagViz } from "@ui/DagViz";
-import { Overview } from "@ui/Overview";
 import { RunProvider } from "@ui/RunState";
 import { useExport } from "@ui/useExport";
 import { useRoute, type View } from "@ui/route";
@@ -34,7 +33,7 @@ function App() {
   // Overview first: it's the front door, stating in prose what's loaded and
   // pointing on to the graph or the walkthrough — for an upload and the demo
   // alike.
-  const [route, navigate] = useRoute("overview");
+  const [route, navigate] = useRoute("graph");
   // Carried across the toggle so the graph is a detour, not a restart.
   const pick = (view: View) => navigate({ view, step: route.step });
 
@@ -50,31 +49,25 @@ function App() {
           <p className="subtitle">Powered by Off-Grid Analytics</p>
         </>
       )}
-      <Wip />
 
-      {/* One position, never remounted: a remount reports an empty DAG and undoes the load. */}
-      <div hidden={!dag}>{upload}</div>
+      <div style={{ display: "none" }}>{upload}</div>
 
       {!dag && <Landing onDemo={setDemoSource} />}
 
+      <Wip />
       {dag && (
         // Switching views unmounts the other one, so what the user has done
         // has to be held above both — which is also what lets either view
         // show every node's status.
         <RunProvider dag={dag}>
           <div className="view-toggle" role="group" aria-label="View">
-            {/* Overview leads everywhere — it's the front door. The demo
-                leads with the graph after that, so its button leads too. */}
-            <ViewButton view="overview" current={route.view} onPick={pick}>
-              Overview
-            </ViewButton>
             {demo ? (
               <>
                 <ViewButton view="graph" current={route.view} onPick={pick}>
-                  Graph
+                  View the pipeline
                 </ViewButton>
                 <ViewButton view="steps" current={route.view} onPick={pick}>
-                  Steps
+                  Run the pipeline
                 </ViewButton>
               </>
             ) : (
@@ -93,9 +86,7 @@ function App() {
           {/* The frame the completion overlay covers, which is why it's
               positioned: the overlay is scoped to the view, not the page. */}
           <div className="view-frame">
-            {route.view === "overview" ? (
-              <Overview dag={dag} />
-            ) : route.view === "graph" ? (
+            {route.view === "graph" ? (
               <DagViz dag={dag} showUnreached={demo} />
             ) : (
               <DagSlides
