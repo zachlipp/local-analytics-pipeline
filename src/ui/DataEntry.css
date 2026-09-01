@@ -142,6 +142,7 @@
 }
 
 /* Phone portrait only: the 18rem frozen column alone won't fit; tablets clear this width. */
+/* TODO: consolidate breakpoints into one shared rule. */
 @media (max-width: 30rem) and (orientation: portrait) {
   .entry-grid,
   .entry-status {
@@ -157,6 +158,7 @@
 }
 
 /* Short viewports (landscape phone): the header band is mostly slack above the rotated labels. */
+/* TODO: consolidate breakpoints into one shared rule. */
 @media (max-height: 30rem) {
   .entry {
     margin-top: 0.5rem;

@@ -7,6 +7,7 @@ import { DemoStart } from "@ui/DemoStart";
 import { DagUpload } from "@ui/DagUpload";
 import { Landing } from "@ui/Landing";
 import { DagSlides } from "@ui/DagSlides";
+import { Wip } from "@ui/Wip";
 import { DagViz } from "@ui/DagViz";
 import { Overview } from "@ui/Overview";
 import { RunProvider } from "@ui/RunState";
@@ -46,12 +47,10 @@ function App() {
       {dag && (
         <>
           <h1>{dag.pipeline_name}</h1>
-          <p className="subtitle">
-            Powered by Off-Grid Analytics
-            <p className="warning">Work In Progress - Subject to Change</p>
-          </p>
+          <p className="subtitle">Powered by Off-Grid Analytics</p>
         </>
       )}
+      <Wip />
 
       {/* One position, never remounted: a remount reports an empty DAG and undoes the load. */}
       <div hidden={!dag}>{upload}</div>

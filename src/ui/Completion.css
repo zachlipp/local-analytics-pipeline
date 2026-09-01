@@ -48,12 +48,13 @@
   border-radius: 10px;
   background: var(--dag-surface);
   box-shadow: var(--dag-shadow-hover);
-  text-align: center;
+  text-align: left;
 }
 
 .completion-card h2 {
   margin: 0;
   font-size: 1.5rem;
+  text-align: center;
 }
 
 .completion-card p {
@@ -120,6 +121,7 @@
    so covering the frame no longer centres anything and the card's overflow
    pushes Dismiss past the fold. Cover the viewport instead, and cap the card
    so its own content scrolls rather than the page. */
+/* TODO: consolidate breakpoints into one shared rule. */
 @media (max-width: 52rem) {
   .completion {
     position: fixed;

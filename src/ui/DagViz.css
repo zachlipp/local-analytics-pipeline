@@ -27,18 +27,6 @@
   background: var(--dag-canvas);
 }
 
-/* On phones the fixed 70vh runs off the bottom of the screen alongside the
-   header above it. App.css switches the page to a flex column for this
-   route; here the canvas just claims whatever's left, so it fills the
-   screen instead of requiring a scroll to reach. */
-@media (max-width: 640px) {
-  .dag-viz {
-    flex: 1;
-    height: auto;
-    min-height: 0;
-  }
-}
-
 /* Toolbar ---------------------------------------------------------------- */
 
 /* Sits outside the canvas frame, so its controls are never mistaken for part
@@ -354,4 +342,22 @@
 
 .dag-viz .react-flow__controls-button svg {
   fill: currentcolor;
+}
+
+/* On phones the fixed 70vh runs off the bottom of the screen alongside the
+   header above it. App.css switches the page to a flex column for this
+   route; here the canvas just claims whatever's left, so it fills the
+   screen instead of requiring a scroll to reach. */
+/* TODO: consolidate breakpoints into one shared rule. */
+@media (max-width: 40rem) {
+  .dag-viz {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+  }
+
+  /* No room for them on a phone; the graph keeps its default node filters. */
+  .dag-viz-toolbar {
+    display: none;
+  }
 }

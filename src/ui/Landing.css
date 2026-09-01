@@ -449,6 +449,7 @@
   font-size: 0.85rem;
 }
 
+/* TODO: consolidate breakpoints into one shared rule. */
 @media (max-width: 52rem) {
   .story-grid,
   .two-hands,

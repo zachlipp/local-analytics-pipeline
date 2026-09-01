@@ -308,7 +308,8 @@
 }
 
 /* Mobile: the slide type is sized for a wide frame, so shrink it across the board. */
-@media (max-width: 640px) {
+/* TODO: consolidate breakpoints into one shared rule. */
+@media (max-width: 40rem) {
   .dag-slides {
     padding: 1rem;
   }
