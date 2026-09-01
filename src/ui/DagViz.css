@@ -16,6 +16,8 @@
 .dag-viz {
   /* The edge tooltip is positioned against this box. */
   position: relative;
+  /* iOS inflates text in tall blocks, which would break the measured layout. */
+  -webkit-text-size-adjust: 100%;
   height: 70vh;
   /* The toolbar above owns the gap that used to sit here. */
   margin: 0.6rem 0 0;

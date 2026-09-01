@@ -186,6 +186,31 @@ function DagFlow({
   const active = pinned ?? hover;
   const container = useRef<HTMLDivElement>(null);
 
+  const [positions, setPositions] = useState<Map<
+    string,
+    { x: number; y: number }
+  > | null>(null);
+
+  // Rounded, so sub-pixel wobble can't spin the fit effect.
+  const [box, setBox] = useState<{ width: number; height: number } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    const el = container.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver(([entry]) => {
+      const width = Math.round(entry.contentRect.width);
+      const height = Math.round(entry.contentRect.height);
+      setBox((b) =>
+        b && b.width === width && b.height === height ? b : { width, height },
+      );
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // Hovering one edge lights the whole bundle and dims the rest, so a fan-in
   // reads as the single operation it is. Derived rather than stored, to keep
   // this out of the edge state that onEdgesChange owns.
@@ -253,23 +278,23 @@ function DagFlow({
         return position ? { ...n, position } : n;
       }),
     );
+    setPositions(positions);
+    // sizes is rebuilt every render; sizeKey is the value that actually changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodesInitialized, sizeKey, direction, graph.layoutEdges, setNodes]);
 
-    const box = container.current?.getBoundingClientRect();
+  // Separate from the layout pass so a resize re-fits without re-running dagre.
+  // A stale box is the whole bug: the first measurement can predate the final
+  // canvas size, and the fit computed from it never gets corrected otherwise.
+  useEffect(() => {
+    if (!positions || !box) return;
+
     const viewport = fitLeftmost(positions, sizes, box, margin);
     // No duration: the graph appears where it will stay instead of flying there.
     if (viewport) setViewport(viewport);
     setPlaced(true);
-    // sizes is rebuilt every render; sizeKey is the value that actually changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    nodesInitialized,
-    sizeKey,
-    direction,
-    graph.layoutEdges,
-    setNodes,
-    margin,
-    setViewport,
-  ]);
+  }, [positions, sizeKey, box, margin, setViewport]);
 
   return (
     <>
@@ -440,7 +465,7 @@ function fitLeftmost(
   box: { width: number; height: number } | undefined,
   margin: number,
 ) {
-  if (!box || box.height <= 2 * margin) return null;
+  if (!box) return null;
 
   const placed = sizes.flatMap((s) => {
     const at = positions.get(s.id);
@@ -458,8 +483,13 @@ function fitLeftmost(
   const top = Math.min(...rank.map((n) => n.y));
   const bottom = Math.max(...rank.map((n) => n.y + n.height));
 
-  const zoom = Math.min(1, (box.height - 2 * margin) / (bottom - top));
-  return { x: margin - left * zoom, y: margin - top * zoom, zoom };
+  // Proportional, so a short canvas doesn't spend most of its height on margin.
+  const m = Math.min(margin, box.height * 0.08);
+  const zoom = Math.max(
+    0.35,
+    Math.min(1, (box.height - 2 * m) / (bottom - top)),
+  );
+  return { x: m - left * zoom, y: m - top * zoom, zoom };
 }
 
 function measure(n: DagFlowNode) {
