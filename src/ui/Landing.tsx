@@ -114,9 +114,7 @@ export function Landing({ onDemo }: { onDemo: (source: string) => void }) {
           </a>
         </div>
       </header>
-
       <PipelineCanvas />
-
       <section className="story" id="story">
         <p className="eyebrow">The problem</p>
         <div className="story-lead">
@@ -146,31 +144,6 @@ export function Landing({ onDemo }: { onDemo: (source: string) => void }) {
         </div>
       </section>
 
-      <section className="two-hands">
-        <div className="panel" data-kind="operation_result">
-          <p className="eyebrow">What the engineer writes</p>
-          <pre>
-            <code>{SCORE}</code>
-          </pre>
-          <p className="panel-note">
-            One YAML file, checked into a repo, reviewed like any other code.
-          </p>
-        </div>
-        <div className="panel" data-kind="user_input">
-          <p className="eyebrow">What the analyst does</p>
-          <ol className="performance">
-            {PERFORMANCE.map((step) => (
-              <li key={step.verb}>
-                <strong>{step.verb}</strong> {step.rest}
-              </li>
-            ))}
-          </ol>
-          <p className="panel-note">
-            No install, no account, no query. The pipeline asks; they answer.
-          </p>
-        </div>
-      </section>
-
       <section className="advantages-section">
         <p className="eyebrow">Why it works</p>
         <ul className="advantages">
@@ -186,17 +159,6 @@ export function Landing({ onDemo }: { onDemo: (source: string) => void }) {
             </li>
           ))}
         </ul>
-      </section>
-
-      <section className="closer">
-        <h2>Load a pipeline and run it.</h2>
-        <p>
-          The demo is a real pipeline: eight tables, five queries, two things
-          only a person can answer. It runs entirely in this tab.
-        </p>
-        <div className="hero-actions">
-          <DemoButton onDemo={onDemo} />
-        </div>
       </section>
     </div>
   );

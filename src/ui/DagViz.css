@@ -9,6 +9,10 @@
  * and font changes here re-flow the graph on their own.
  */
 
+.upload {
+  display: none;
+}
+
 .dag-viz {
   /* The edge tooltip is positioned against this box. */
   position: relative;

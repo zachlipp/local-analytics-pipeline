@@ -35,11 +35,7 @@ function App() {
   const pick = (view: View) => navigate({ view, step: route.step });
 
   const upload = (
-    <DagUpload
-      initialSource={demoSource}
-      onDag={setDag}
-      onSource={setSource}
-    />
+    <DagUpload initialSource={demoSource} onDag={setDag} onSource={setSource} />
   );
 
   return (

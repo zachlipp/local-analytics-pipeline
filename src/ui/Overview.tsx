@@ -11,7 +11,11 @@ import { StatusBadge } from "./StatusBadge";
 
 // Data sources hand the pipeline raw material; data entry, scripts, and SQL
 // operations each transform it in their own way, so they're counted apart.
-const SOURCE_KINDS = new Set<Node["kind"]>(["data_literal", "user_input", "file"]);
+const SOURCE_KINDS = new Set<Node["kind"]>([
+  "data_literal",
+  "user_input",
+  "file",
+]);
 
 // The front door: states in prose what the loaded pipeline is made of, then
 // sends the reader on to the graph or the walkthrough. Counts and
@@ -34,11 +38,13 @@ export function Overview({ dag }: { dag: Dag }) {
 
   return (
     <div className="overview">
-      <p className="overview-summary">
-        {dag.pipeline_name} draws on {count(sources, "data source")}, fills
-        out {count(grids, "data entry grid")}, runs {count(scripts, "script")}
-        , and performs {count(operations, "SQL operation")}.
-      </p>
+      <p className="overview-summary">Your pipeline {dag.pipeline_name}:</p>
+      <ul>
+        <li>Reads {count(sources, "data source")}</li>
+        <li>Requires data entry {count(grids, "time")}</li>
+        <li>Runs {count(scripts, "custom script")}</li>
+        <li>Performs {count(operations, "SQL operation")}</li>
+      </ul>
 
       <div className="overview-actions">
         <a className="overview-action" href={formatRoute({ view: "graph" })}>
@@ -51,18 +57,6 @@ export function Overview({ dag }: { dag: Dag }) {
           Start running it
         </a>
       </div>
-
-      <ul className="overview-nodes">
-        {nodes.map(([name, node]) => (
-          <li className="overview-node" key={node.id}>
-            <div className="overview-node-name">
-              {name}
-              <StatusBadge status={statuses.get(name) ?? "UNREACHED"} />
-            </div>
-            <p className="overview-node-description">{node.description}</p>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }
