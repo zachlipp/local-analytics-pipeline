@@ -306,3 +306,49 @@
   opacity: 0.35;
   cursor: default;
 }
+
+/* Mobile: the slide type is sized for a wide frame, so shrink it across the board. */
+@media (max-width: 640px) {
+  .dag-slides {
+    padding: 1rem;
+  }
+
+  .dag-slide-count,
+  .dag-slide-kind,
+  .dag-slide-note,
+  .dag-slide-warning,
+  .dag-slide-error {
+    font-size: 0.75rem;
+  }
+
+  .dag-slide-name {
+    font-size: 1.3rem;
+  }
+
+  .dag-slide-description,
+  .dag-slide-empty {
+    font-size: 0.85rem;
+  }
+
+  .dag-slide-action {
+    font-size: 0.85rem;
+  }
+
+  .dag-slide-url,
+  .dag-slide-result,
+  .dag-slide-search {
+    font-size: 0.7rem;
+  }
+
+  .dag-slide-mode {
+    font-size: 0.65rem;
+  }
+
+  .dag-slide-preview table {
+    font-size: 0.65rem;
+  }
+
+  .dag-slide-input {
+    font-size: 0.85rem;
+  }
+}

@@ -155,3 +155,25 @@
     text-align: center;
   }
 }
+
+/* Short viewports (landscape phone): the header band is mostly slack above the rotated labels. */
+@media (max-height: 30rem) {
+  .entry {
+    margin-top: 0.5rem;
+  }
+
+  .entry-grid {
+    max-height: 60vh;
+  }
+
+  .entry-grid th.entry-option {
+    height: 4.5rem;
+  }
+
+  .entry-grid th.entry-option span {
+    bottom: 0.35rem;
+    left: 0.5rem;
+    width: 5rem;
+    font-size: 0.65rem;
+  }
+}
