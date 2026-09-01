@@ -241,15 +241,7 @@
 
 /* Story */
 
-.story-grid {
-  display: grid;
-  grid-template-columns: 1.6fr 1fr;
-  gap: 3rem;
-  align-items: start;
-}
-
 .story-lead p {
-  max-width: 34rem;
   margin: 0 0 1rem;
   font-size: 1.05rem;
   line-height: 1.65;

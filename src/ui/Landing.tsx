@@ -5,18 +5,18 @@ import { useState } from "react";
 const ADVANTAGES = [
   {
     icon: <GraphIcon />,
-    title: "You describe relationships. We build the graph.",
-    body: "Name each table and what it depends on. Execution order, run state, and the picture of the whole pipeline come out of that.",
+    title: "Visualize your data pipelines.",
+    body: "You name each table and its dependencies, we determine execution order and visualize it.",
   },
   {
     icon: <BoltIcon />,
-    title: "No code to use. All of code underneath.",
-    body: "Schemas, SQL, tests, version control — the engineering stays. The person running the pipeline never sees any of it.",
+    title: "No-code feel, full-code benefits.",
+    body: "Engineers write SQL, schemas, tests, and leverage version control. End users never have to see any of it.",
   },
   {
     icon: <LockIcon />,
-    title: "The browser is the database.",
-    body: "DuckDB compiled to WebAssembly runs every query on the machine that opened the page. No server, no upload, no round trip.",
+    title: "Totally private execution.",
+    body: "SQL queries run on DuckDB compiled to WebAssembly in the user's browser. Data never leaves users' computers.",
   },
 ];
 
@@ -98,42 +98,19 @@ const PERFORMANCE = [
   { verb: "Export", rest: "the results and the pipeline that made them." },
 ];
 
-const INSIDE = [
-  {
-    kind: "file",
-    body: "A CSV the person running the pipeline supplies. Its columns are checked against a declared schema before anything reads it.",
-  },
-  {
-    kind: "data_literal",
-    body: "A small table written into the pipeline itself — lookup lists, exclusions, last year's numbers.",
-  },
-  {
-    kind: "user_input",
-    body: "One value asked for at run time, like a reporting year.",
-  },
-  {
-    kind: "data_entry",
-    body: "A table filled in by hand during the run, one row per record that needs a human decision.",
-  },
-  {
-    kind: "operation_result",
-    body: "The table a SQL query produces. Its inputs are what wire the graph together.",
-  },
-];
-
 export function Landing({ onDemo }: { onDemo: (source: string) => void }) {
   return (
     <div className="landing">
       <header className="hero">
         <p className="eyebrow">
-          SQL pipelines, run by the people who own the data
+          No sheets - whether that's sheet music or spreadsheets.
         </p>
         <h1 className="hero-title">By Ear Analytics</h1>
-        <p className="hero-lead">Perform without the spreadsheets.</p>
+        <p className="hero-lead">Private performance without spreadsheets.</p>
         <div className="hero-actions">
           <DemoButton onDemo={onDemo} />
           <a className="hero-link" href="#story">
-            See how it fits together
+            See how it works
           </a>
         </div>
       </header>
@@ -142,37 +119,30 @@ export function Landing({ onDemo }: { onDemo: (source: string) => void }) {
 
       <section className="story" id="story">
         <p className="eyebrow">The problem</p>
-        <div className="story-grid">
-          <div className="story-lead">
-            <p>
-              A domain expert has a pipeline that has gotten out of hand — a
-              spreadsheet where years of data and years of bespoke logic live in
-              the same cells. An engineer is brought in to sort it out.
-            </p>
-            <p>
-              <strong>They do not speak the same language.</strong> The expert
-              works in one artifact that holds everything. The engineer
-              separates operations from data and wants them to stay separate.
-            </p>
-            <p>
-              This is where the two meet. The logic gets written down once, as
-              SQL. The data arrives fresh every run, from the person who has it.
-            </p>
-          </div>
-          <ul className="story-split">
-            <li>
-              <span className="tag" data-kind="operation_result">
-                Written once
-              </span>
-              <p>Schemas, queries, the shape of the graph, the tests.</p>
-            </li>
-            <li>
-              <span className="tag" data-kind="user_input">
-                Supplied every run
-              </span>
-              <p>The files, the one-off values, the judgment calls.</p>
-            </li>
-          </ul>
+        <div className="story-lead">
+          <p>
+            A domain expert has a data pipeline that's gotten a bit out of hand
+            — a spreadsheet where years of data and years of bespoke logic live
+            in the same cells. They bring in an engineer to sort it out. There's
+            one big problem:
+          </p>
+          <p>
+            <strong>They don't speak the same language.</strong>
+          </p>
+          <p>
+            Well, metaphorically, at least. Domain experts leverage the same
+            spreadsheets for years, bleeding together the history of data, the
+            operations on the data, and intermediary steps between them.
+            Engineers separate data from the operations on that data, and
+            therefore struggle to parse complicated spreadsheets.
+          </p>
+          <p>
+            This project marries these two worlds. Engineers can focus on the
+            execution: Defining the nodes in the pipeline, how they relate to
+            each other, and schemas they must follow. Domain experts can focus
+            on the data: Uploading tables, editing information that lives in the
+            graph, and performing data entry from the browser.
+          </p>
         </div>
       </section>
 
@@ -216,18 +186,6 @@ export function Landing({ onDemo }: { onDemo: (source: string) => void }) {
             </li>
           ))}
         </ul>
-      </section>
-
-      <section className="inside">
-        <p className="eyebrow">Every node is one of five kinds</p>
-        <dl className="kinds">
-          {INSIDE.map((entry) => (
-            <div className="kind" key={entry.kind}>
-              <dt data-kind={entry.kind}>{entry.kind}</dt>
-              <dd>{entry.body}</dd>
-            </div>
-          ))}
-        </dl>
       </section>
 
       <section className="closer">
@@ -345,11 +303,6 @@ function PipelineCanvas() {
           </div>
         )}
       </div>
-      <figcaption>
-        {BEFORE_URL
-          ? "The same work as a pipeline: part of the demo, in the order it runs."
-          : "Part of the demo pipeline, in the order it runs."}
-      </figcaption>
     </figure>
   );
 }
