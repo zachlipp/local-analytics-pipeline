@@ -120,3 +120,23 @@ h1 {
 .view-frame {
   position: relative;
 }
+
+/* Mobile graph view: the fixed 70vh canvas plus the header above it runs
+   taller than the screen, pushing the graph below the fold. Scoped to
+   :has(.dag-viz) so only the graph route switches to a fill-the-screen
+   layout — Overview and Steps keep their normal flow. */
+@media (max-width: 640px) {
+  main:has(.dag-viz) {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+  }
+
+  main:has(.dag-viz) .view-frame {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+}

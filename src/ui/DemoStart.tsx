@@ -18,19 +18,21 @@ export function DemoStart({ dag }: { dag: Dag }) {
       aria-label="Pipeline demo"
     >
       <div className="completion-card">
-        <h2>{dag.pipeline_name}</h2>
-        <p>
-          This demonstration pipeline manages fake customer data, all
-          constructed in the browser.
-        </p>
-        <p>
-          In practice, this information would be uploaded as CSV files
-          (single-sheet spreadsheets that contain no formulas).
-        </p>
-        <p>
-          For demonstration only, we instead use just a few records you can edit
-          right here in the browser.
-        </p>
+        <div className="completion-body">
+          <h2>{dag.pipeline_name}</h2>
+          <p>
+            This demonstration pipeline manages fake customer data, all
+            constructed in the browser.
+          </p>
+          <p>
+            In practice, this information would be uploaded as CSV files
+            (single-sheet spreadsheets that contain no formulas).
+          </p>
+          <p>
+            For demonstration only, we instead use just a few records you can
+            edit right here in the browser.
+          </p>
+        </div>
         <div className="completion-actions">
           <button type="button" onClick={dismiss}>
             Dismiss

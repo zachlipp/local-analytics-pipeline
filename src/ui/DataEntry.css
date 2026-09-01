@@ -136,3 +136,22 @@
   color: var(--muted);
   font-size: 0.8rem;
 }
+
+.entry-rotate-prompt {
+  display: none;
+}
+
+/* Phone portrait only: the 18rem frozen column alone won't fit; tablets clear this width. */
+@media (max-width: 30rem) and (orientation: portrait) {
+  .entry-grid,
+  .entry-status {
+    display: none;
+  }
+
+  .entry-rotate-prompt {
+    display: block;
+    padding: 2rem 1rem;
+    color: var(--muted);
+    text-align: center;
+  }
+}

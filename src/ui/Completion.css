@@ -1,5 +1,7 @@
 /* Covers the view frame rather than the viewport: the header and the view
-   toggle stay reachable, and both views are a fixed 70vh so the card centres. */
+   toggle stay reachable, and both views are a fixed 70vh so the card centres.
+   Below the mobile breakpoint this is overridden to cover the viewport
+   instead — see the media query at the bottom of this file. */
 .completion {
   position: absolute;
   inset: 0;
@@ -112,4 +114,31 @@
 
 .completion-reopen:hover {
   background: color-mix(in srgb, var(--dag-accent) 10%, var(--dag-surface));
+}
+
+/* Below this, the view frame's 70vh box can be taller than the actual screen,
+   so covering the frame no longer centres anything and the card's overflow
+   pushes Dismiss past the fold. Cover the viewport instead, and cap the card
+   so its own content scrolls rather than the page. */
+@media (max-width: 52rem) {
+  .completion {
+    position: fixed;
+  }
+
+  .completion-card {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 3rem);
+  }
+
+  /* min-height: 0 lets a flex item shrink below its content so this scrolls
+     instead of growing the card past completion-actions. */
+  .completion-body {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .completion-actions {
+    flex-shrink: 0;
+  }
 }

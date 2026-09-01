@@ -32,6 +32,10 @@ export function DataEntry({
 
   return (
     <div className="entry">
+      {/* CSS-only: swapped in for .entry-grid on narrow portrait screens. */}
+      <div className="entry-rotate-prompt">
+        Rotate your phone to landscape to enter data.
+      </div>
       <div className="entry-grid">
         <table>
           <thead>

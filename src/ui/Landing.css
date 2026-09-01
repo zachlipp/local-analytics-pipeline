@@ -122,27 +122,19 @@
   grid-area: 1 / 1;
 }
 
-/* The layer the wipe peels off. It sits inside the frame's padding and is
-   contained, not cropped, so the sheet tabs along its bottom survive. */
+/* The layer the wipe peels off. Frame and media are both 5:2, so it fills without cropping. */
 .before {
-  grid-area: 1 / 1;
   position: absolute;
-  inset: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
+  inset: 0;
 }
 
 .before img,
 .before video {
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  object-fit: contain;
   display: block;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: var(--dag-shadow);
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: left center;
 }
 
 .before-label {

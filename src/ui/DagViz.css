@@ -25,6 +25,18 @@
   background: var(--dag-canvas);
 }
 
+/* On phones the fixed 70vh runs off the bottom of the screen alongside the
+   header above it. App.css switches the page to a flex column for this
+   route; here the canvas just claims whatever's left, so it fills the
+   screen instead of requiring a scroll to reach. */
+@media (max-width: 640px) {
+  .dag-viz {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+  }
+}
+
 /* Toolbar ---------------------------------------------------------------- */
 
 /* Sits outside the canvas frame, so its controls are never mistaken for part

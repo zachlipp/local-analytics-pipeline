@@ -75,11 +75,13 @@ export function Completion({
       aria-label="Pipeline complete"
     >
       <div className="completion-card">
-        <h2>Pipeline complete</h2>
-        <p>
-          Every node in {dag.pipeline_name} has run. Export the pipeline and its
-          results to take them out of the browser.
-        </p>
+        <div className="completion-body">
+          <h2>Pipeline complete</h2>
+          <p>
+            Every node in {dag.pipeline_name} has run. Export the pipeline and
+            its results to take them out of the browser.
+          </p>
+        </div>
         <div className="completion-actions">
           <button
             type="button"
