@@ -38,19 +38,6 @@ export function Completion({
   const [reopened, setReopened] = useState(false);
   const { exporting, error, run } = useExport(dag, source);
 
-  // Falling out of completion resets the dismissal, so finishing a second time
-  // opens the overlay again rather than silently leaving the small button.
-  // Adjusted during render rather than in an effect: an effect would paint the
-  // stale dismissal first.
-  const [wasComplete, setWasComplete] = useState(complete);
-  if (wasComplete !== complete) {
-    setWasComplete(complete);
-    if (!complete) {
-      setDismissed(false);
-      setReopened(false);
-    }
-  }
-
   if (!complete || view === "overview") return null;
 
   if (dismissed) {
