@@ -1,0 +1,164 @@
+version: v0.1.0
+pipeline_name: Customer Orders Demo
+option_sets:
+  categories:
+    description: |
+      The product categories a customer buys from, coded by hand for
+      customers we have not seen before
+    type: VARCHAR
+    values:
+      - apparel
+      - books
+      - electronics
+      - grocery
+      - toys
+nodes:
+  order_history:
+    kind: data_literal
+    description: |
+      Orders placed in past years
+    data:
+      - customer_id: '1001'
+        name: Acme Corporation
+        year: '2023'
+        amount: '5000'
+      - customer_id: '1002'
+        name: Globex Industries
+        year: '2023'
+        amount: '12000'
+      - customer_id: '1003'
+        name: Initech Solutions
+        year: '2024'
+        amount: '7500'
+  incoming_orders:
+    kind: data_literal
+    description: |
+      Orders placed this cycle, not yet part of the history
+    data:
+      - customer_id: '1002'
+        name: Globex Industries
+        amount: '9000'
+      - customer_id: '1004'
+        name: Umbrella Test Account
+        amount: '3000'
+  year:
+    kind: user_input
+    default: '2024'
+    description: |
+      The year the incoming orders were placed
+  excluded_words:
+    kind: data_literal
+    description: |
+      Customers whose names contain these words are left out of reporting
+    column: word
+    data:
+      - TEST
+      - INTERNAL
+  all_orders:
+    kind: operation_result
+    description: |
+      Every order the company has taken, past and present
+  customers:
+    kind: operation_result
+    description: |
+      One row per customer, with its order totals
+  billable_customers:
+    kind: operation_result
+    description: |
+      Customers that belong in the report
+  needs_categories:
+    kind: operation_result
+    description: |
+      Customers whose product categories nobody has coded yet
+  populate_categories:
+    kind: data_entry
+    description: |
+      Code each customer's product categories by hand
+    input: needs_categories
+    key: customer_id
+    frozen:
+      - name
+    options: categories
+    links:
+      name: https://www.google.com/search?q={name}
+  classified_customers:
+    kind: operation_result
+    description: |
+      The finished list, with hand-coded product categories attached
+operations:
+  union_orders:
+    description: |
+      Stack this cycle's orders onto the history, stamped with the year
+    inputs:
+      - order_history
+      - incoming_orders
+      - year
+    output: all_orders
+    query: |
+      SELECT customer_id, name, CAST(year AS INTEGER) AS year, CAST(amount AS DOUBLE) AS amount
+      FROM order_history
+      UNION ALL BY NAME
+      SELECT incoming_orders.customer_id
+           , incoming_orders.name
+           , CAST(year.value AS INTEGER) AS year
+           , CAST(incoming_orders.amount AS DOUBLE) AS amount
+      FROM incoming_orders
+      JOIN year ON true
+  aggregate_orders:
+    description: |
+      Sum and count each customer's orders
+    inputs:
+      - all_orders
+    output: customers
+    query: |
+      SELECT customer_id
+           , max(name) AS name
+           , count(*) AS number_of_orders
+           , sum(amount) AS lifetime_revenue
+      FROM all_orders
+      GROUP BY customer_id
+  filter_customers:
+    description: |
+      Drop customers the company does not report on
+    inputs:
+      - customers
+      - excluded_words
+    output: billable_customers
+    query: |
+      SELECT customers.customer_id
+           , customers.name
+           , customers.number_of_orders
+           , customers.lifetime_revenue
+      FROM customers
+      WHERE NOT EXISTS
+        (SELECT 1
+         FROM excluded_words
+         WHERE customers.name ILIKE ('%' || excluded_words.word || '%'))
+  find_unclassified:
+    description: |
+      Every billable customer still needs its product categories coded
+    inputs:
+      - billable_customers
+    output: needs_categories
+    query: |
+      SELECT customer_id, name
+      FROM billable_customers
+  apply_categories:
+    description: |
+      Join the hand-coded product categories back onto the customers
+    inputs:
+      - billable_customers
+      - populate_categories
+    output: classified_customers
+    query: |
+      SELECT billable_customers.customer_id
+           , billable_customers.name
+           , billable_customers.number_of_orders
+           , billable_customers.lifetime_revenue
+           , populate_categories.apparel
+           , populate_categories.books
+           , populate_categories.electronics
+           , populate_categories.grocery
+           , populate_categories.toys
+      FROM billable_customers
+      LEFT OUTER JOIN populate_categories ON billable_customers.customer_id = populate_categories.customer_id
