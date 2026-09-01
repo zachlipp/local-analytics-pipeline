@@ -30,7 +30,8 @@ export function DemoStart({ dag }: { dag: Dag }) {
           </p>
           <p>
             For demonstration only, we instead use just a few records you can
-            edit right here in the browser.
+            edit right here in the browser. All operations are still SQL and are
+            executed on your device - even if you're viewing from a phone.
           </p>
         </div>
         <div className="completion-actions">
