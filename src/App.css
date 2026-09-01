@@ -14,6 +14,11 @@ h1 {
   color: var(--muted);
 }
 
+.warning {
+  color: #ff9966;
+  font-size: 0.8em;
+}
+
 /* The native file input is hidden; the label is the visible control. */
 .upload {
   display: inline-block;

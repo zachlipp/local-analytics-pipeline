@@ -46,7 +46,10 @@ function App() {
       {dag && (
         <>
           <h1>{dag.pipeline_name}</h1>
-          <p className="subtitle">Powered by Off-Grid Analytics</p>
+          <p className="subtitle">
+            Powered by Off-Grid Analytics
+            <p className="warning">Work In Progress - Subject to Change</p>
+          </p>
         </>
       )}
 
