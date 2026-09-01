@@ -11,7 +11,7 @@ const ADVANTAGES = [
   {
     icon: <BoltIcon />,
     title: "No-code feel, full-code benefits.",
-    body: "Engineers write SQL, schemas, tests, and leverage version control. End users never have to see any of it.",
+    body: "Engineers write SQL, schemas, tests, and custom TypeScript functions. End users never have to see any of it.",
   },
   {
     icon: <LockIcon />,
@@ -121,8 +121,9 @@ export function Landing({ onDemo }: { onDemo: (source: string) => void }) {
           <p>
             The end product is a private data pipeline that's defined once by a
             software engineer and run as often as needed by domain experts. It
-            bundles the expressiveness of SQL, the interativity of browsers and
-            private, in-browser execution.
+            bundles the expressiveness of SQL, the interativity of browsers, the
+            flexibility of JavaScript, and local, private execution. Check out
+            the demo to learn more.
           </p>
         </div>
       </section>

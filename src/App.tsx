@@ -43,18 +43,22 @@ function App() {
 
   return (
     <main>
-      {dag && (
-        <>
-          <h1>{dag.pipeline_name}</h1>
-          <p className="subtitle">Powered by Off-Grid Analytics</p>
-        </>
-      )}
+      <div className="page-header">
+        <div className="page-header-text">
+          {dag && (
+            <>
+              <h1>{dag.pipeline_name}</h1>
+              <p className="subtitle">Powered by Off-Grid Analytics</p>
+            </>
+          )}
+        </div>
+        <Wip />
+      </div>
 
       <div style={{ display: "none" }}>{upload}</div>
 
       {!dag && <Landing onDemo={setDemoSource} />}
 
-      <Wip />
       {dag && (
         // Switching views unmounts the other one, so what the user has done
         // has to be held above both — which is also what lets either view
