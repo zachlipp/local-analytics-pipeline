@@ -73,31 +73,6 @@ const BEFORE_SRC = !BEFORE_URL
     ? BEFORE_URL
     : `${BEFORE_URL}?load=${Date.now()}`;
 
-const SCORE = `nodes:
-  incoming_orders:
-    kind: file
-    schema: orders
-  year:
-    kind: user_input
-
-operations:
-  union_orders:
-    inputs: [order_history, incoming_orders, year]
-    output: all_orders
-    query: |
-      SELECT customer_id, name
-           , CAST(year.value AS INTEGER) AS year
-      FROM incoming_orders
-      JOIN year ON true`;
-
-const PERFORMANCE = [
-  { verb: "Drop in", rest: "this cycle's orders as a CSV." },
-  { verb: "Type", rest: "the year those orders were placed." },
-  { verb: "Code", rest: "the customers nobody has categorized yet." },
-  { verb: "Run", rest: "the pipeline and read the finished table." },
-  { verb: "Export", rest: "the results and the pipeline that made them." },
-];
-
 export function Landing({ onDemo }: { onDemo: (source: string) => void }) {
   return (
     <div className="landing">

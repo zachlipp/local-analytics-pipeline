@@ -455,7 +455,7 @@ function UserInputControl({
 }: {
   id: string;
   label: string;
-  placeholder: string;
+  placeholder: string | undefined;
 }) {
   const [result, report] = useNodeResult(id);
   const name = label.trim() || "Value";

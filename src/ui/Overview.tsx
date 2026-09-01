@@ -4,10 +4,7 @@ import "./Overview.css";
 
 import { buildPipeline } from "@core/pipeline";
 import type { Dag, Node } from "@core/schema";
-import { nodeStatuses } from "@core/status";
 import { formatRoute } from "./route";
-import { useRun } from "./RunState";
-import { StatusBadge } from "./StatusBadge";
 
 // Data sources hand the pipeline raw material; data entry, scripts, and SQL
 // operations each transform it in their own way, so they're counted apart.
@@ -23,11 +20,6 @@ const SOURCE_KINDS = new Set<Node["kind"]>([
 // stale and no schema change is needed.
 export function Overview({ dag }: { dag: Dag }) {
   const pipeline = useMemo(() => buildPipeline(dag), [dag]);
-  const { results } = useRun();
-  const statuses = useMemo(
-    () => nodeStatuses(pipeline, results),
-    [pipeline, results],
-  );
 
   const nodes = Object.entries(dag.nodes);
   const sources = nodes.filter(([, n]) => SOURCE_KINDS.has(n.kind)).length;
