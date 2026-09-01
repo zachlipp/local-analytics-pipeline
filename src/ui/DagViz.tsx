@@ -62,18 +62,26 @@ export function DagViz({
   dag,
   direction = "LR",
   showUnreached = false,
+  margin = 70,
 }: {
   dag: Dag;
   direction?: Direction;
   /** Whether unreached nodes are shown before the user touches the toggle. */
   showUnreached?: boolean;
+  /** Gap in pixels between the canvas edge and the graph's top-left corner. */
+  margin?: number;
 }) {
-  // useNodesInitialized and useReactFlow read the React Flow store, which only
+  // useNodesInitialized reads the React Flow store, which only
   // exists below a provider. <ReactFlow> makes its own, but we need the store
   // in the component that renders it, so the provider goes one level up.
   return (
     <ReactFlowProvider>
-      <DagFlow dag={dag} direction={direction} showUnreached={showUnreached} />
+      <DagFlow
+        dag={dag}
+        direction={direction}
+        showUnreached={showUnreached}
+        margin={margin}
+      />
     </ReactFlowProvider>
   );
 }
@@ -82,10 +90,12 @@ function DagFlow({
   dag,
   direction,
   showUnreached: initialShowUnreached,
+  margin,
 }: {
   dag: Dag;
   direction: Direction;
   showUnreached: boolean;
+  margin: number;
 }) {
   // constructEdges() mints fresh uuids on every call, so this must be memoised
   // or every render would hand React Flow brand-new edge keys.
@@ -158,8 +168,7 @@ function DagFlow({
   );
 
   // `hidden` rather than dropping them from the array: React Flow keeps a
-  // hidden node's measurements, so toggling back doesn't cost a re-measure,
-  // and it already leaves them out of fitView's bounds.
+  // hidden node's measurements, so toggling back doesn't cost a re-measure.
   const renderedNodes = useMemo(
     () =>
       nodes.map((n) => ({
@@ -216,7 +225,7 @@ function DagFlow({
   const hoveredGroup = active ? graph.groups[active.target] : undefined;
 
   const nodesInitialized = useNodesInitialized();
-  const { fitView } = useReactFlow();
+  const { setViewport } = useReactFlow();
 
   // Rounded, because measured sizes are fractional and sub-pixel wobble would
   // otherwise re-trigger the layout effect forever.
@@ -244,20 +253,23 @@ function DagFlow({
         return position ? { ...n, position } : n;
       }),
     );
+
+    const box = container.current?.getBoundingClientRect();
+    const viewport = fitLeftmost(positions, sizes, box, margin);
+    // No duration: the graph appears where it will stay instead of flying there.
+    if (viewport) setViewport(viewport);
     setPlaced(true);
     // sizes is rebuilt every render; sizeKey is the value that actually changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodesInitialized, sizeKey, direction, graph.layoutEdges, setNodes]);
-
-  // A frame later, so the viewport is fitted to the positions we just wrote
-  // rather than the ones being replaced.
-  useEffect(() => {
-    if (!placed) return;
-    const frame = requestAnimationFrame(() => {
-      void fitView({ padding: 0.15, duration: 200 });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [placed, sizeKey, fitView]);
+  }, [
+    nodesInitialized,
+    sizeKey,
+    direction,
+    graph.layoutEdges,
+    setNodes,
+    margin,
+    setViewport,
+  ]);
 
   return (
     <>
@@ -287,27 +299,27 @@ function DagFlow({
         ref={container}
         style={{ opacity: placed ? 1 : 0 }}
       >
-          <ReactFlow
-            nodes={renderedNodes}
-            edges={renderedEdges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            nodeTypes={nodeTypes}
-            defaultEdgeOptions={defaultEdgeOptions}
-            onEdgeMouseEnter={onEdgeHover}
-            onEdgeMouseMove={onEdgeHover}
-            onEdgeClick={onEdgeClick}
-            onNodeDoubleClick={openStep}
-            onEdgeMouseLeave={() => setHover(null)}
-            // Clicking empty canvas dismisses a pinned bundle.
-            onPaneClick={() => setPinned(null)}
-            // The graph renders a pipeline definition; it isn't an editor.
-            nodesConnectable={false}
-            deleteKeyCode={null}
-          >
-            <Background variant={BackgroundVariant.Dots} gap={18} size={1.4} />
-            <Controls showInteractive={false} />
-          </ReactFlow>
+        <ReactFlow
+          nodes={renderedNodes}
+          edges={renderedEdges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          nodeTypes={nodeTypes}
+          defaultEdgeOptions={defaultEdgeOptions}
+          onEdgeMouseEnter={onEdgeHover}
+          onEdgeMouseMove={onEdgeHover}
+          onEdgeClick={onEdgeClick}
+          onNodeDoubleClick={openStep}
+          onEdgeMouseLeave={() => setHover(null)}
+          // Clicking empty canvas dismisses a pinned bundle.
+          onPaneClick={() => setPinned(null)}
+          // The graph renders a pipeline definition; it isn't an editor.
+          nodesConnectable={false}
+          deleteKeyCode={null}
+        >
+          <Background variant={BackgroundVariant.Dots} gap={18} size={1.4} />
+          <Controls showInteractive={false} />
+        </ReactFlow>
 
         {active && hoveredGroup && (
           <EdgeTooltip group={hoveredGroup} x={active.x} y={active.y} />
@@ -417,6 +429,37 @@ function EdgeTooltip({
       </div>
     </div>
   );
+}
+
+// The leftmost rank sets the zoom: fit its full height between the top and
+// bottom margins, then pan so its left edge sits one margin in. Zooming past 1
+// would just magnify the nodes, so that's the ceiling.
+function fitLeftmost(
+  positions: Map<string, { x: number; y: number }>,
+  sizes: { id: string; width: number; height: number }[],
+  box: { width: number; height: number } | undefined,
+  margin: number,
+) {
+  if (!box || box.height <= 2 * margin) return null;
+
+  const placed = sizes.flatMap((s) => {
+    const at = positions.get(s.id);
+    return at ? [{ ...s, ...at }] : [];
+  });
+  if (placed.length === 0) return null;
+
+  // By centre, not by left edge: dagre gives a rank one centre line, and the
+  // corners it returns are that centre minus each node's own half-width.
+  const centre = (n: (typeof placed)[number]) => n.x + n.width / 2;
+  const first = Math.min(...placed.map(centre));
+  const rank = placed.filter((n) => centre(n) <= first + 1);
+
+  const left = Math.min(...rank.map((n) => n.x));
+  const top = Math.min(...rank.map((n) => n.y));
+  const bottom = Math.max(...rank.map((n) => n.y + n.height));
+
+  const zoom = Math.min(1, (box.height - 2 * margin) / (bottom - top));
+  return { x: margin - left * zoom, y: margin - top * zoom, zoom };
 }
 
 function measure(n: DagFlowNode) {

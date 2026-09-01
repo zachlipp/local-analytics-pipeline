@@ -2,12 +2,15 @@ import "./App.css";
 
 import { useState } from "react";
 
+import { Completion } from "@ui/Completion";
+import { DemoStart } from "@ui/DemoStart";
 import { DagUpload } from "@ui/DagUpload";
 import { Landing } from "@ui/Landing";
 import { DagSlides } from "@ui/DagSlides";
 import { DagViz } from "@ui/DagViz";
 import { Overview } from "@ui/Overview";
-import { RunProvider, useRun } from "@ui/RunState";
+import { RunProvider } from "@ui/RunState";
+import { useExport } from "@ui/useExport";
 import { useRoute, type View } from "@ui/route";
 import type { Dag } from "@core/schema";
 
@@ -43,7 +46,7 @@ function App() {
       {dag && (
         <>
           <h1>{dag.pipeline_name}</h1>
-          <p className="subtitle">By Ear Analytics</p>
+          <p className="subtitle">Powered by Off-Grid Analytics</p>
         </>
       )}
 
@@ -85,52 +88,34 @@ function App() {
             {!demo && <ExportButton dag={dag} source={source} />}
           </div>
 
-          {route.view === "overview" ? (
-            <Overview dag={dag} />
-          ) : route.view === "graph" ? (
-            <DagViz dag={dag} showUnreached={demo} />
-          ) : (
-            <DagSlides
-              dag={dag}
-              searchColumns={demo ? DEMO_SEARCH_COLUMNS : undefined}
-            />
-          )}
+          {/* The frame the completion overlay covers, which is why it's
+              positioned: the overlay is scoped to the view, not the page. */}
+          <div className="view-frame">
+            {route.view === "overview" ? (
+              <Overview dag={dag} />
+            ) : route.view === "graph" ? (
+              <DagViz dag={dag} showUnreached={demo} />
+            ) : (
+              <DagSlides
+                dag={dag}
+                searchColumns={demo ? DEMO_SEARCH_COLUMNS : undefined}
+              />
+            )}
+            <Completion dag={dag} source={source} view={route.view} />
+            {demo && <DemoStart dag={dag} />}
+          </div>
         </RunProvider>
       )}
     </main>
   );
 }
 
-// The download itself touches wasm, so it's lazily imported like every other
-// path that runs a query.
 function ExportButton({ dag, source }: { dag: Dag; source?: string }) {
-  const { results } = useRun();
-  const [exporting, setExporting] = useState(false);
-  const [error, setError] = useState<string>();
-
-  async function onExport() {
-    if (!source) return;
-    setExporting(true);
-    setError(undefined);
-    try {
-      const { buildExport } = await import("@ui/exportPipeline");
-      const { downloadZip } = await import("@ui/downloadZip");
-      const files = await buildExport(dag, source, results);
-      await downloadZip(`${dag.pipeline_name}.zip`, files);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-    } finally {
-      setExporting(false);
-    }
-  }
+  const { exporting, error, run } = useExport(dag, source);
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => void onExport()}
-        disabled={!source || exporting}
-      >
+      <button type="button" onClick={run} disabled={!source || exporting}>
         {exporting ? "Exporting…" : "Export"}
       </button>
       {error && <span className="export-error">{error}</span>}

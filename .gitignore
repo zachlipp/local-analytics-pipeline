@@ -1,4 +1,6 @@
 data*
+backlog*
+!backlog/config.yaml
 
 # Logs
 logs

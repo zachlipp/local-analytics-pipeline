@@ -12,6 +12,9 @@ t:
 v:
 	npm run validate
 
+vd:
+	npm run validate data/demo.yaml
+
 b:
 	npm run build
 

@@ -1,5 +1,5 @@
 {
-  "name": "by-ear-analytics",
+  "name": "off-grid-analytics",
   "private": true,
   "version": "0.0.0",
   "license": "MIT",
@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "validate": "tsx src/node/validatePipeline.ts data/schema.yaml",
+    "validate": "tsx src/node/validatePipeline.ts",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",

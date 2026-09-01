@@ -208,7 +208,13 @@ function SlideControl({
       return <ScriptControl node={node} table={name} schemas={dag.schemas} />;
 
     case "user_input":
-      return <UserInputControl id={node.id} label={node.description} />;
+      return (
+        <UserInputControl
+          id={node.id}
+          label={node.description}
+          placeholder={node.default}
+        />
+      );
 
     case "data_entry":
       return <DataEntry node={node} table={name} />;
@@ -378,7 +384,9 @@ function TablePreview({
           className="dag-slide-search"
           type={raw ? "text" : "search"}
           value={query}
-          placeholder={raw ? "SELECT * FROM … — enter to run" : searchLabel(searchColumns)}
+          placeholder={
+            raw ? "SELECT * FROM … — enter to run" : searchLabel(searchColumns)
+          }
           aria-label={raw ? "SQL to run" : searchLabel(searchColumns)}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -440,7 +448,15 @@ function TableBody({ columns, rows }: { columns: string[]; rows: Row[] }) {
   );
 }
 
-function UserInputControl({ id, label }: { id: string; label: string }) {
+function UserInputControl({
+  id,
+  label,
+  placeholder,
+}: {
+  id: string;
+  label: string;
+  placeholder: string;
+}) {
   const [result, report] = useNodeResult(id);
   const name = label.trim() || "Value";
 
@@ -449,7 +465,7 @@ function UserInputControl({ id, label }: { id: string; label: string }) {
       className="dag-slide-input"
       type="text"
       value={result.value ?? ""}
-      placeholder={name}
+      placeholder={placeholder}
       aria-label={name}
       onChange={(e) => report({ value: e.target.value })}
     />
@@ -482,7 +498,11 @@ function FileControl({
         data-dragging={dragging}
         {...drop}
       >
-        {uploading ? "Uploading" : dragging ? "Drop it" : "Choose a file or drop it here"}
+        {uploading
+          ? "Uploading"
+          : dragging
+            ? "Drop it"
+            : "Choose a file or drop it here"}
         {uploading && <Spinner label="Uploading" />}
         <input
           type="file"
@@ -533,7 +553,12 @@ function ScriptControl({
   schemas: Dag["schemas"];
 }) {
   const [, report] = useNodeResult(node.id);
-  const { running, error, result, run } = useScript(node, table, schemas, report);
+  const { running, error, result, run } = useScript(
+    node,
+    table,
+    schemas,
+    report,
+  );
 
   return (
     <>
@@ -620,4 +645,3 @@ function RefreshIcon() {
     </svg>
   );
 }
-

@@ -89,3 +89,9 @@ function statusOf(
   const ready = step.inputs.every((i) => statuses.get(i) === "SUCCEEDED");
   return ready ? "NEEDS_INPUT" : "UNREACHED";
 }
+
+// A pipeline with no nodes has nothing to finish, so it is never complete.
+export function pipelineComplete(statuses: Map<string, Status>): boolean {
+  if (statuses.size === 0) return false;
+  return [...statuses.values()].every((s) => s === "SUCCEEDED");
+}

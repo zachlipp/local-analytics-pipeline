@@ -18,7 +18,7 @@
   --kind-data-literal: red;
   --kind-data-entry: var(--dag-line);
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --sans: Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
   font: 16px/1.5 var(--sans);

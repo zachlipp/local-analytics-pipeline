@@ -1,0 +1,115 @@
+/* Covers the view frame rather than the viewport: the header and the view
+   toggle stay reachable, and both views are a fixed 70vh so the card centres. */
+.completion {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(3px);
+  /* `both` holds the from-state through the delay, so the view stays clear for
+     a beat after the last node lands before the overlay fades up over it. */
+  animation: completion-in 600ms ease-out 900ms both;
+}
+
+@keyframes completion-in {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+
+  to {
+    opacity: 1;
+    backdrop-filter: blur(3px);
+  }
+}
+
+/* Reopened by hand, so there is nothing to wait for. */
+.completion-instant {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .completion {
+    animation-duration: 1ms;
+  }
+}
+
+.completion-card {
+  max-width: 30rem;
+  padding: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--dag-surface);
+  box-shadow: var(--dag-shadow-hover);
+  text-align: center;
+}
+
+.completion-card h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.completion-card p {
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+}
+
+.completion-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.completion-actions button {
+  padding: 0.5rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.completion-actions button:hover {
+  border-color: var(--text);
+  color: var(--text);
+}
+
+.completion-actions button:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.completion-export {
+  border-color: var(--dag-accent) !important;
+  background: var(--dag-accent) !important;
+  color: #fff !important;
+}
+
+/* What a dismissed overlay collapses to: pinned inside the frame so it rides
+   along with whichever view is showing. */
+.completion-reopen {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 5;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--dag-accent);
+  border-radius: 999px;
+  background: var(--dag-surface);
+  color: var(--dag-accent);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-shadow: var(--dag-shadow);
+}
+
+.completion-reopen:hover {
+  background: color-mix(in srgb, var(--dag-accent) 10%, var(--dag-surface));
+}

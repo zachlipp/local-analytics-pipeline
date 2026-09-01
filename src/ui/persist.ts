@@ -29,7 +29,7 @@ export function sameDurable(a: Persisted, b?: Persisted): boolean {
   );
 }
 
-const DATABASE = "by-ear-analytics";
+const DATABASE = "off-grid-analytics";
 const STORE = "results";
 
 let connection: Promise<IDBDatabase> | undefined;

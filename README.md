@@ -1,4 +1,3 @@
-# Local Analytics Pipeline (LAP)
+# Off-Grid Analytics
 
-TODO
-
+See the landing page for explanation.

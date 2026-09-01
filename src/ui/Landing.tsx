@@ -102,15 +102,15 @@ export function Landing({ onDemo }: { onDemo: (source: string) => void }) {
   return (
     <div className="landing">
       <header className="hero">
-        <p className="eyebrow">
-          No sheets - whether that's sheet music or spreadsheets.
+        <h1 className="hero-title">Off-Grid Analytics</h1>
+        <p className="hero-lead">
+          No messy spreadsheets. No prying eyes on your data. Define your
+          pipeline once, and run it forever for free.
         </p>
-        <h1 className="hero-title">By Ear Analytics</h1>
-        <p className="hero-lead">Private performance without spreadsheets.</p>
         <div className="hero-actions">
           <DemoButton onDemo={onDemo} />
           <a className="hero-link" href="#story">
-            See how it works
+            Learn more
           </a>
         </div>
       </header>
@@ -121,25 +121,33 @@ export function Landing({ onDemo }: { onDemo: (source: string) => void }) {
           <p>
             A domain expert has a data pipeline that's gotten a bit out of hand
             — a spreadsheet where years of data and years of bespoke logic live
-            in the same cells. They bring in an engineer to sort it out. There's
-            one big problem:
+            in the same cells. They bring in a software engineer to sort it out.
+            There's one big problem:
           </p>
           <p>
             <strong>They don't speak the same language.</strong>
           </p>
           <p>
-            Well, metaphorically, at least. Domain experts leverage the same
-            spreadsheets for years, bleeding together the history of data, the
-            operations on the data, and intermediary steps between them.
-            Engineers separate data from the operations on that data, and
-            therefore struggle to parse complicated spreadsheets.
+            Well, metaphorically, at least. Domain experts live in spreadsheets;
+            software engineers live in code. Spreadsheets bleed together the
+            history of data, the operations on the data, and intermediary steps
+            between them. Code separates data from the operations on that data.
+            Our tools shape our thinking, and the gap between these tools means
+            software engineers and analysts don't think about problems the same
+            way.
           </p>
           <p>
-            This project marries these two worlds. Engineers can focus on the
-            execution: Defining the nodes in the pipeline, how they relate to
-            each other, and schemas they must follow. Domain experts can focus
-            on the data: Uploading tables, editing information that lives in the
-            graph, and performing data entry from the browser.
+            Off-Grid Analytics bridges this gap. Software engineers can focus on
+            pipeline execution: data, schemas, and queries and how the relate to
+            each other. Domain experts can focus on the data: Uploading tables,
+            editing information that lives in the graph, and performing data
+            entry from the browser.
+          </p>
+          <p>
+            The end product is a private data pipeline that's defined once by a
+            software engineer and run as often as needed by domain experts. The
+            expressiveness of SQL with editable tables, data entry, and private,
+            in-browser execution.
           </p>
         </div>
       </section>

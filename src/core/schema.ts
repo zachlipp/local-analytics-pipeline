@@ -37,6 +37,7 @@ const FileNode = Described.extend({
 const UserInputNode = Described.extend({
   kind: z.literal("user_input"),
   user_input: z.string().optional(),
+  default: z.string().optional(),
   export: z.boolean().default(false),
 });
 
