@@ -1,3 +1,4 @@
+import type { Identity } from "@core/pipelineChange";
 import type { NodeResult } from "@core/status";
 
 /**
@@ -31,13 +32,23 @@ export function sameDurable(a: Persisted, b?: Persisted): boolean {
 
 const DATABASE = "off-grid-analytics";
 const STORE = "results";
+// Which pipeline the results belong to. Without it a reload restores whatever
+// is in the store into whatever gets uploaded next, matching on node id alone.
+const META = "meta";
+const IDENTITY = "identity";
 
 let connection: Promise<IDBDatabase> | undefined;
 
 function database(): Promise<IDBDatabase> {
   connection ??= new Promise<IDBDatabase>((resolve, reject) => {
-    const request = indexedDB.open(DATABASE, 1);
-    request.onupgradeneeded = () => request.result.createObjectStore(STORE);
+    const request = indexedDB.open(DATABASE, 2);
+    // Guarded rather than unconditional: v1 users arrive here with `results`
+    // already made, and creating it twice throws.
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+      if (!db.objectStoreNames.contains(META)) db.createObjectStore(META);
+    };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
@@ -45,13 +56,14 @@ function database(): Promise<IDBDatabase> {
 }
 
 async function transact<T>(
+  name: string,
   mode: IDBTransactionMode,
   work: (store: IDBObjectStore) => T,
 ): Promise<T> {
   const conn = await database();
   return new Promise<T>((resolve, reject) => {
-    const tx = conn.transaction(STORE, mode);
-    const outcome = work(tx.objectStore(STORE));
+    const tx = conn.transaction(name, mode);
+    const outcome = work(tx.objectStore(name));
     tx.oncomplete = () => resolve(outcome);
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error);
@@ -59,7 +71,7 @@ async function transact<T>(
 }
 
 export async function loadResults(): Promise<Record<string, Persisted>> {
-  const [keys, values] = await transact("readonly", (store) => [
+  const [keys, values] = await transact(STORE, "readonly", (store) => [
     store.getAllKeys(),
     store.getAll(),
   ]);
@@ -80,9 +92,20 @@ export async function saveResult(id: string, result: Persisted): Promise<void> {
   if (result.entries) stored.entries = result.entries;
   if (result.literal) stored.literal = result.literal;
 
-  await transact("readwrite", (store) => store.put(stored, id));
+  await transact(STORE, "readwrite", (store) => store.put(stored, id));
 }
 
 export async function clearResults(): Promise<void> {
-  await transact("readwrite", (store) => store.clear());
+  await transact(STORE, "readwrite", (store) => store.clear());
+}
+
+export async function loadIdentity(): Promise<Identity | undefined> {
+  const stored = await transact(META, "readonly", (store) =>
+    store.get(IDENTITY),
+  );
+  return stored.result as Identity | undefined;
+}
+
+export async function saveIdentity(identity: Identity): Promise<void> {
+  await transact(META, "readwrite", (store) => store.put(identity, IDENTITY));
 }

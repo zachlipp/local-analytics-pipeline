@@ -1,6 +1,6 @@
 import "./Landing.css";
 
-import { useState } from "react";
+import type { Source } from "./route";
 
 const ADVANTAGES = [
   {
@@ -73,7 +73,7 @@ const BEFORE_SRC = !BEFORE_URL
     ? BEFORE_URL
     : `${BEFORE_URL}?load=${Date.now()}`;
 
-export function Landing({ onDemo }: { onDemo: (source: string) => void }) {
+export function Landing({ onStart }: { onStart: (source: Source) => void }) {
   return (
     <div className="landing">
       <header className="hero">
@@ -83,7 +83,16 @@ export function Landing({ onDemo }: { onDemo: (source: string) => void }) {
           pipeline once, and run it forever for free.
         </p>
         <div className="hero-actions">
-          <DemoButton onDemo={onDemo} />
+          <button
+            type="button"
+            className="demo"
+            onClick={() => onStart("demo-pipeline")}
+          >
+            Run the demo pipeline
+          </button>
+          <button type="button" onClick={() => onStart("custom-pipeline")}>
+            Upload your own
+          </button>
           <a className="hero-link" href="#story">
             Learn more
           </a>
@@ -250,39 +259,6 @@ function PipelineCanvas() {
         )}
       </div>
     </figure>
-  );
-}
-
-// The fixture is a whole pipeline, so it is only pulled in if asked for.
-function DemoButton({ onDemo }: { onDemo: (source: string) => void }) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>();
-
-  async function onClick() {
-    setLoading(true);
-    setError(undefined);
-    try {
-      const { default: source } = await import("../../data/demo.yaml?raw");
-      onDemo(source);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <>
-      <button
-        type="button"
-        className="demo"
-        onClick={() => void onClick()}
-        disabled={loading}
-      >
-        {loading ? "Loading…" : "Run the demo pipeline"}
-      </button>
-      {error && <span className="demo-error">{error}</span>}
-    </>
   );
 }
 

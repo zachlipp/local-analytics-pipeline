@@ -3,9 +3,9 @@ import { stableUuid, uuid } from "@core/utils";
 import { expandOptionSets, OptionSets } from "./optionSets";
 import { SCRIPT_NAME } from "./scripts";
 
-// From semver.org
+// A narrowed semver: digits, dots, and the one prerelease the hotfix hatch appends.
 export const semverRegex =
-  /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
+  /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-hotfix)?$/;
 
 const Identified = z.object({
   id: z

@@ -35,6 +35,14 @@
   animation: none;
 }
 
+/* Blocks the page rather than a view: it can appear on the upload prompt,
+   where there is no .view-frame to be positioned against. */
+.completion-fixed {
+  position: fixed;
+  z-index: 20;
+  border-radius: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .completion {
     animation-duration: 1ms;

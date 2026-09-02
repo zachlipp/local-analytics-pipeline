@@ -1,51 +1,45 @@
 import "./App.css";
 
-import { useState } from "react";
-
 import { Completion } from "@ui/Completion";
 import { DemoStart } from "@ui/DemoStart";
 import { DagUpload } from "@ui/DagUpload";
+import { ExportButton } from "@ui/ExportButton";
 import { Landing } from "@ui/Landing";
 import { DagSlides } from "@ui/DagSlides";
+import { PipelineChange } from "@ui/PipelineChange";
 import { Wip } from "@ui/Wip";
 import { DagViz } from "@ui/DagViz";
 import { RunProvider } from "@ui/RunState";
-import { useExport } from "@ui/useExport";
-import { useRoute, type View } from "@ui/route";
-import type { Dag } from "@core/schema";
+import { usePipeline } from "@ui/usePipeline";
+import { useRoute, type Source, type View } from "@ui/route";
 
 // The demo's identifier column, which the stock list of searchable columns
 // knows nothing about.
 const DEMO_SEARCH_COLUMNS = ["customer_id", "name"];
 
 function App() {
-  // App owns the parsed DAG: DagUpload produces it, DagViz renders it.
-  const [dag, setDag] = useState<Dag>();
-  // Kept alongside the parsed dag so Export can patch the text the user
-  // actually uploaded rather than re-serializing what parsing derived from it.
-  const [source, setSource] = useState<string>();
-  // The demo enters through the same door an upload does, so nothing
-  // downstream has to know where the YAML came from.
-  const [demoSource, setDemoSource] = useState<string>();
-  // True only while the loaded pipeline is the one the demo button supplied;
-  // uploading a file replaces `source` and turns this back off.
-  const demo = source !== undefined && source === demoSource;
-  // Overview first: it's the front door, stating in prose what's loaded and
-  // pointing on to the graph or the walkthrough — for an upload and the demo
-  // alike.
   const [route, navigate] = useRoute("graph");
-  // Carried across the toggle so the graph is a detour, not a restart.
-  const pick = (view: View) => navigate({ view, step: route.step });
+  const { dag, source, from, errors, pending, generation, offer, accept, cancel } =
+    usePipeline(route.source);
 
-  const upload = (
-    <DagUpload initialSource={demoSource} onDag={setDag} onSource={setSource} />
-  );
+  // Which route this is, rather than which file was loaded: the demo is a
+  // place you can be, so nothing has to compare source text to find out.
+  const demo = route.source === "demo-pipeline";
+  // A pipeline is only this route's once it has been committed here. Until
+  // then #/custom-pipeline shows its prompt even though a demo may still be
+  // in memory.
+  const loaded = dag && from === route.source;
+
+  // Navigation merges, so the step rides along and the graph stays a detour
+  // rather than a restart.
+  const pick = (view: View) => navigate({ view });
+  const start = (source: Source) => navigate({ source, view: "graph" });
 
   return (
     <main>
       <div className="page-header">
         <div className="page-header-text">
-          {dag && (
+          {loaded && (
             <>
               <h1>{dag.pipeline_name}</h1>
               <p className="subtitle">Powered by Off-Grid Analytics</p>
@@ -55,15 +49,18 @@ function App() {
         <Wip />
       </div>
 
-      <div style={{ display: "none" }}>{upload}</div>
+      {!route.source && <Landing onStart={start} />}
 
-      {!dag && <Landing onDemo={setDemoSource} />}
+      {route.source === "custom-pipeline" && !loaded && (
+        <DagUpload onOffer={offer} messages={errors} />
+      )}
 
-      {dag && (
+      {loaded && (
         // Switching views unmounts the other one, so what the user has done
         // has to be held above both — which is also what lets either view
-        // show every node's status.
-        <RunProvider dag={dag}>
+        // show every node's status. Keyed on the generation so a wipe remounts
+        // it onto an empty store rather than carrying the old work across.
+        <RunProvider key={generation} dag={dag}>
           <div className="view-toggle" role="group" aria-label="View">
             {demo ? (
               <>
@@ -103,20 +100,17 @@ function App() {
           </div>
         </RunProvider>
       )}
+
+      {pending && (
+        <PipelineChange
+          pending={pending}
+          dag={dag}
+          source={source}
+          onAccept={accept}
+          onCancel={cancel}
+        />
+      )}
     </main>
-  );
-}
-
-function ExportButton({ dag, source }: { dag: Dag; source?: string }) {
-  const { exporting, error, run } = useExport(dag, source);
-
-  return (
-    <>
-      <button type="button" onClick={run} disabled={!source || exporting}>
-        {exporting ? "Exporting…" : "Export"}
-      </button>
-      {error && <span className="export-error">{error}</span>}
-    </>
   );
 }
 

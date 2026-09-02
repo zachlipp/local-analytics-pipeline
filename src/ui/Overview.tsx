@@ -4,7 +4,7 @@ import "./Overview.css";
 
 import { buildPipeline } from "@core/pipeline";
 import type { Dag, Node } from "@core/schema";
-import { formatRoute } from "./route";
+import { formatRoute, mergeRoute, useRoute } from "./route";
 
 // Data sources hand the pipeline raw material; data entry, scripts, and SQL
 // operations each transform it in their own way, so they're counted apart.
@@ -20,6 +20,8 @@ const SOURCE_KINDS = new Set<Node["kind"]>([
 // stale and no schema change is needed.
 export function Overview({ dag }: { dag: Dag }) {
   const pipeline = useMemo(() => buildPipeline(dag), [dag]);
+  // These are links rather than handlers, so they merge by hand.
+  const [route] = useRoute();
 
   const nodes = Object.entries(dag.nodes);
   const sources = nodes.filter(([, n]) => SOURCE_KINDS.has(n.kind)).length;
@@ -39,12 +41,15 @@ export function Overview({ dag }: { dag: Dag }) {
       </ul>
 
       <div className="overview-actions">
-        <a className="overview-action" href={formatRoute({ view: "graph" })}>
+        <a
+          className="overview-action"
+          href={formatRoute(mergeRoute(route, { view: "graph" }))}
+        >
           Visualize the pipeline
         </a>
         <a
           className="overview-action"
-          href={formatRoute({ view: "steps", step: firstStep })}
+          href={formatRoute(mergeRoute(route, { view: "steps", step: firstStep }))}
         >
           Start running it
         </a>
