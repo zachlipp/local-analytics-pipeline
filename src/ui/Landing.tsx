@@ -90,7 +90,11 @@ export function Landing({ onStart }: { onStart: (source: Source) => void }) {
           >
             Run the demo pipeline
           </button>
-          <button type="button" onClick={() => onStart("custom-pipeline")}>
+          <button
+            className="custom-pipeline-link"
+            type="button"
+            onClick={() => onStart("custom-pipeline")}
+          >
             Upload your own
           </button>
           <a className="hero-link" href="#story">

@@ -19,8 +19,17 @@ const DEMO_SEARCH_COLUMNS = ["customer_id", "name"];
 
 function App() {
   const [route, navigate] = useRoute("graph");
-  const { dag, source, from, errors, pending, generation, offer, accept, cancel } =
-    usePipeline(route.source);
+  const {
+    dag,
+    source,
+    from,
+    errors,
+    pending,
+    generation,
+    offer,
+    accept,
+    cancel,
+  } = usePipeline(route.source);
 
   // Which route this is, rather than which file was loaded: the demo is a
   // place you can be, so nothing has to compare source text to find out.
@@ -67,17 +76,27 @@ function App() {
                 <ViewButton view="graph" current={route.view} onPick={pick}>
                   View the pipeline
                 </ViewButton>
-                <ViewButton view="steps" current={route.view} onPick={pick}>
+                <ViewButton
+                  view="steps"
+                  current={route.view}
+                  onPick={pick}
+                  className={route.view === "graph" ? "wb-pop" : undefined}
+                >
                   Run the pipeline
                 </ViewButton>
               </>
             ) : (
               <>
-                <ViewButton view="steps" current={route.view} onPick={pick}>
-                  Steps
-                </ViewButton>
                 <ViewButton view="graph" current={route.view} onPick={pick}>
-                  Graph
+                  View the pipeline
+                </ViewButton>
+                <ViewButton
+                  view="steps"
+                  current={route.view}
+                  onPick={pick}
+                  className={route.view === "graph" ? "wb-pop" : undefined}
+                >
+                  Run the pipeline
                 </ViewButton>
               </>
             )}
@@ -88,7 +107,7 @@ function App() {
               positioned: the overlay is scoped to the view, not the page. */}
           <div className="view-frame">
             {route.view === "graph" ? (
-              <DagViz dag={dag} showUnreached={demo} />
+              <DagViz dag={dag} />
             ) : (
               <DagSlides
                 dag={dag}
@@ -118,16 +137,19 @@ function ViewButton({
   view,
   current,
   onPick,
+  className,
   children,
 }: {
   view: View;
   current: View;
   onPick: (view: View) => void;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
+      className={className}
       aria-pressed={view === current}
       onClick={() => onPick(view)}
     >

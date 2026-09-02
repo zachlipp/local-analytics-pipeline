@@ -1,5 +1,5 @@
 import type { LiteralRecord } from "./dataLiteral";
-import type { Pipeline, PipelineStep } from "./pipeline";
+import type { Pipeline, PipelineNode, PipelineStep } from "./pipeline";
 
 export type Status =
   | "SUCCEEDED"
@@ -44,8 +44,10 @@ export type NodeResult = {
  *
  * NEEDS_INPUT is the run's frontier: everything upstream is satisfied, so this
  * node is waiting on the user right now. UNREACHED is strictly "blocked —
- * something upstream isn't done", which is what makes hiding it useful: what's
- * left is the work you can actually do plus the work already finished.
+ * nothing you do to this node now moves the run", which is what makes hiding
+ * it useful: what's left is the work you can actually do plus the work already
+ * finished. That covers an input nobody is waiting on yet as well as an
+ * operation whose inputs aren't in.
  *
  * A node with an upload or request in flight stays NEEDS_INPUT until it lands.
  * There's no status for work in progress and it doesn't need one — the control
@@ -63,7 +65,59 @@ export function nodeStatuses(
     statuses.set(step.name, statusOf(step, results[step.node.id], statuses));
   }
 
+  demoteUnneeded(pipeline, results, statuses);
   return statuses;
+}
+
+/**
+ * Pull back the inputs no operation is waiting on yet.
+ *
+ * A file or literal has nothing upstream, so the forward pass always calls it
+ * ready — but "ready" is a lie when the only operation consuming it is itself
+ * blocked several hops back. Uploading it changes nothing today, so it belongs
+ * with the rest of the work that isn't available yet.
+ *
+ * The walk runs backwards over the topological order, so a node demoted here
+ * is already demoted by the time the nodes feeding it are considered.
+ */
+function demoteUnneeded(
+  pipeline: Pipeline,
+  results: Record<string, NodeResult>,
+  statuses: Map<string, Status>,
+): void {
+  for (let i = pipeline.steps.length - 1; i >= 0; i--) {
+    const step = pipeline.steps[i];
+
+    // An operation's own output is already judged by its inputs, and a node no
+    // operation consumes has no one to be unneeded by.
+    if (step.operation || step.outputs.length === 0) continue;
+    // Whatever the user has already put in stands; only untouched nodes move.
+    if (touched(results[step.node.id])) continue;
+
+    const status = statuses.get(step.name);
+    if (status !== "NEEDS_INPUT" && status !== "SUCCEEDED") continue;
+
+    const needed = step.outputs.some((name) =>
+      awaiting(pipeline.nodes.get(name)!, statuses),
+    );
+    if (!needed) statuses.set(step.name, "UNREACHED");
+  }
+}
+
+// Whether the only thing standing between this node and running is input the
+// user can hand over right now. An UNREACHED input means it is not.
+function awaiting(node: PipelineNode, statuses: Map<string, Status>): boolean {
+  return node.inputs.every((input) => {
+    const status = statuses.get(input);
+    return status === "SUCCEEDED" || status === "NEEDS_INPUT";
+  });
+}
+
+// Anything recorded against the node counts, errors included: the user has
+// engaged with it, so hiding it out from under them would be a surprise.
+function touched(result: NodeResult | undefined): boolean {
+  if (!result) return false;
+  return Object.values(result).some((v) => v !== undefined);
 }
 
 function statusOf(

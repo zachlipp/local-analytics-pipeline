@@ -19,8 +19,7 @@
   /* iOS inflates text in tall blocks, which would break the measured layout. */
   -webkit-text-size-adjust: 100%;
   height: 70vh;
-  /* The toolbar above owns the gap that used to sit here. */
-  margin: 0.6rem 0 0;
+  margin: 0.75rem 0 0;
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
@@ -29,38 +28,33 @@
 
 /* Toolbar ---------------------------------------------------------------- */
 
-/* Sits outside the canvas frame, so its controls are never mistaken for part
-   of the graph and can't be panned away. */
+/* Floats over the canvas, above React Flow's own panes, and out of the way of
+   the Controls in the bottom-left. */
 .dag-viz-toolbar {
+  position: absolute;
+  z-index: 5;
+  top: 0.6rem;
+  right: 0.6rem;
   display: flex;
-  justify-content: flex-end;
-  margin: 0.75rem 0 0;
+  gap: 0.4rem;
 }
 
-.dag-viz-toggle {
+.dag-viz-button {
   padding: 0.35rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: none;
+  background: var(--dag-canvas);
   color: var(--text);
   font: inherit;
   font-size: 0.85rem;
   cursor: pointer;
 }
 
-.dag-viz-toggle:hover:not(:disabled) {
+.dag-viz-button:hover:not(:disabled) {
   border-color: var(--text);
 }
 
-/* Pressed means the isolated nodes are currently hidden. Styled from the
-   global tokens, not --dag-accent: that one is declared on .dag-viz, which is
-   a sibling of this button rather than an ancestor. */
-.dag-viz-toggle[aria-pressed="true"] {
-  border-color: var(--text);
-  background: color-mix(in srgb, var(--text) 8%, transparent);
-}
-
-.dag-viz-toggle:disabled {
+.dag-viz-button:disabled {
   opacity: 0.5;
   cursor: default;
 }
@@ -356,8 +350,9 @@
     min-height: 0;
   }
 
-  /* No room for them on a phone; the graph keeps its default node filters. */
+  /* Stacked, so two full-width labels don't crowd a phone's canvas. */
   .dag-viz-toolbar {
-    display: none;
+    flex-direction: column;
+    align-items: flex-end;
   }
 }

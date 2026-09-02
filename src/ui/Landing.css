@@ -71,6 +71,7 @@
   margin-top: 2rem;
 }
 
+.custom-pipeline-link,
 .hero-link {
   padding: 0.6rem 1.1rem;
   border: 1px solid var(--border);
@@ -431,6 +432,7 @@
   border-radius: 6px;
   background: var(--text);
   color: var(--bg);
+  font-size: 0.95rem;
   font: inherit;
   cursor: pointer;
 }

@@ -141,3 +141,14 @@ h1 {
     min-height: 0;
   }
 }
+
+/* wobble + pop — grows while it shakes */
+@keyframes wbPop {
+  0%   { transform: rotate(0) scale(1); }
+  5%   { transform: rotate(-7deg) scale(1.08); }
+  12%  { transform: rotate(6deg) scale(1.08); }
+  19%  { transform: rotate(-4deg) scale(1.05); }
+  26%  { transform: rotate(2.5deg) scale(1.02); }
+  33%, 100% { transform: rotate(0) scale(1); }
+}
+.wb-pop { animation: wbPop 4.5s ease-in-out infinite; }

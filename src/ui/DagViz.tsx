@@ -61,13 +61,10 @@ type EdgeHover = { target: string; x: number; y: number };
 export function DagViz({
   dag,
   direction = "LR",
-  showUnreached = false,
   margin = 70,
 }: {
   dag: Dag;
   direction?: Direction;
-  /** Whether unreached nodes are shown before the user touches the toggle. */
-  showUnreached?: boolean;
   /** Gap in pixels between the canvas edge and the graph's top-left corner. */
   margin?: number;
 }) {
@@ -76,12 +73,7 @@ export function DagViz({
   // in the component that renders it, so the provider goes one level up.
   return (
     <ReactFlowProvider>
-      <DagFlow
-        dag={dag}
-        direction={direction}
-        showUnreached={showUnreached}
-        margin={margin}
-      />
+      <DagFlow dag={dag} direction={direction} margin={margin} />
     </ReactFlowProvider>
   );
 }
@@ -89,12 +81,10 @@ export function DagViz({
 function DagFlow({
   dag,
   direction,
-  showUnreached: initialShowUnreached,
   margin,
 }: {
   dag: Dag;
   direction: Direction;
-  showUnreached: boolean;
   margin: number;
 }) {
   // constructEdges() mints fresh uuids on every call, so this must be memoised
@@ -128,55 +118,41 @@ function DagFlow({
       navigate({ view: "steps", step: node.data.name }),
     [navigate],
   );
-  const statusById = useMemo(() => {
-    const byName = nodeStatuses(pipeline, results);
-    const byId = new Map<string, Status>();
-    for (const { name, node } of pipeline.nodes.values()) {
-      byId.set(node.id, byName.get(name) ?? "UNREACHED");
-    }
-    return byId;
-  }, [pipeline, results]);
-
-  // Unreached means blocked on something upstream, so hiding it leaves the
-  // work that can be done now plus the work already done.
-  const [showUnreached, setShowUnreached] = useState(initialShowUnreached);
-  const unreachedCount = [...statusById.values()].filter(
-    (s) => s === "UNREACHED",
-  ).length;
-
-  // Nodes no edge touches at either end. They're part of the pipeline but sit
-  // apart from its flow, so the toolbar can drop them to tighten the graph.
-  const connected = useMemo(() => {
-    const ids = new Set<string>();
-    for (const e of graph.edges) {
-      ids.add(e.source);
-      ids.add(e.target);
-    }
-    return ids;
-  }, [graph.edges]);
-
-  const [showIsolated, setShowIsolated] = useState(true);
-  const isolatedCount = graph.nodes.length - connected.size;
-
-  // Both filters at once, so the node array is walked once and the layout
-  // below can ask the same question.
-  const visible = useCallback(
-    (id: string) =>
-      (showIsolated || connected.has(id)) &&
-      (showUnreached || statusById.get(id) !== "UNREACHED"),
-    [showIsolated, connected, showUnreached, statusById],
+  const statuses = useMemo(
+    () => nodeStatuses(pipeline, results),
+    [pipeline, results],
   );
 
-  // `hidden` rather than dropping them from the array: React Flow keeps a
-  // hidden node's measurements, so toggling back doesn't cost a re-measure.
+  const statusById = useMemo(() => {
+    const byId = new Map<string, Status>();
+    for (const { name, node } of pipeline.nodes.values()) {
+      byId.set(node.id, statuses.get(name) ?? "UNREACHED");
+    }
+    return byId;
+  }, [pipeline, statuses]);
+
+  // Where the run is: the slide the user would land on next, so the canvas and
+  // the slides agree on what "current" means. One node and nothing else —
+  // widening the frame to take in its inputs is what pushes the zoom out, and
+  // whatever fits around it at a readable zoom is already on screen.
+  const current = useMemo(() => {
+    // NEEDS_INPUT is the frontier. Taking the first step that merely hasn't
+    // succeeded would stick on an UNREACHED one — a literal nothing is waiting
+    // on yet sorts first and stays unfinished for most of the run.
+    const step =
+      pipeline.steps.find((s) => statuses.get(s.name) === "NEEDS_INPUT") ??
+      pipeline.steps.find((s) => statuses.get(s.name) !== "SUCCEEDED");
+    const node = step && pipeline.nodes.get(step.name);
+    return node ? [node.node.id] : [];
+  }, [pipeline, statuses]);
+
   const renderedNodes = useMemo(
     () =>
       nodes.map((n) => ({
         ...n,
-        hidden: !visible(n.id),
         data: { ...n.data, status: statusById.get(n.id) ?? "UNREACHED" },
       })),
-    [nodes, visible, statusById],
+    [nodes, statusById],
   );
 
   const [hover, setHover] = useState<EdgeHover | null>(null);
@@ -254,13 +230,30 @@ function DagFlow({
 
   // Rounded, because measured sizes are fractional and sub-pixel wobble would
   // otherwise re-trigger the layout effect forever.
-  // Hidden nodes are left out so dagre closes the space they'd otherwise hold
-  // open. Nothing dangles: an isolated node is by definition on no edge.
-  const sizes = useMemo(
-    () => nodes.filter((n) => visible(n.id)).map(measure),
-    [nodes, visible],
-  );
+  const sizes = useMemo(() => nodes.map(measure), [nodes]);
   const sizeKey = sizes.map((s) => `${s.id}:${s.width}x${s.height}`).join("|");
+
+  // Framing is our own arithmetic rather than React Flow's fitView because the
+  // first fit runs in the same commit that hands it the new positions, and its
+  // store is a frame behind ours. Same reason the two buttons use it too: one
+  // way of framing, so the view they give is the view you started in.
+  const frame = useCallback(
+    (ids: string[], maxZoom: number) => {
+      if (!positions || !box) return;
+      const viewport = fitNodes(ids, positions, sizes, box, margin, maxZoom);
+      if (viewport) setViewport(viewport, { duration: 400 });
+    },
+    // sizes is rebuilt every render; its values only change with sizeKey.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [positions, sizeKey, box, margin, setViewport],
+  );
+
+  // The fit effect reads this rather than depending on it: the opening view
+  // follows the run, but a status change mid-run must not yank the canvas.
+  const framing = useRef(current);
+  useEffect(() => {
+    framing.current = current;
+  }, [current]);
 
   // Runs once every node has been measured, and again whenever those
   // measurements change — React Flow's per-node ResizeObserver keeps
@@ -289,7 +282,17 @@ function DagFlow({
   useEffect(() => {
     if (!positions || !box) return;
 
-    const viewport = fitLeftmost(positions, sizes, box, margin);
+    const ids = framing.current;
+    const viewport = ids.length
+      ? fitNodes(ids, positions, sizes, box, margin, CLOSE_ZOOM)
+      : fitNodes(
+          sizes.map((s) => s.id),
+          positions,
+          sizes,
+          box,
+          margin,
+          1,
+        );
     // No duration: the graph appears where it will stay instead of flying there.
     if (viewport) setViewport(viewport);
     setPlaced(true);
@@ -298,32 +301,34 @@ function DagFlow({
 
   return (
     <>
-      <div className="dag-viz-toolbar">
-        <button
-          type="button"
-          className="dag-viz-toggle"
-          onClick={() => setShowUnreached((s) => !s)}
-          aria-pressed={!showUnreached}
-          disabled={unreachedCount === 0}
-        >
-          {showUnreached ? "Hide" : "Show"} unreached nodes ({unreachedCount})
-        </button>
-        <button
-          type="button"
-          className="dag-viz-toggle"
-          onClick={() => setShowIsolated((s) => !s)}
-          aria-pressed={!showIsolated}
-          disabled={isolatedCount === 0}
-        >
-          {showIsolated ? "Hide" : "Show"} unconnected nodes ({isolatedCount})
-        </button>
-      </div>
-
       <div
         className="dag-viz"
         ref={container}
         style={{ opacity: placed ? 1 : 0 }}
       >
+        <div className="dag-viz-toolbar">
+          <button
+            type="button"
+            className="dag-viz-button"
+            onClick={() =>
+              frame(
+                sizes.map((s) => s.id),
+                1,
+              )
+            }
+          >
+            See entire graph
+          </button>
+          <button
+            type="button"
+            className="dag-viz-button"
+            onClick={() => frame(current, CLOSE_ZOOM)}
+            disabled={current.length === 0}
+          >
+            Zoom to current step
+          </button>
+        </div>
+
         <ReactFlow
           nodes={renderedNodes}
           edges={renderedEdges}
@@ -456,40 +461,51 @@ function EdgeTooltip({
   );
 }
 
-// The leftmost rank sets the zoom: fit its full height between the top and
-// bottom margins, then pan so its left edge sits one margin in. Zooming past 1
-// would just magnify the nodes, so that's the ceiling.
-function fitLeftmost(
+// Past 1:1, so the operation you're working on reads at a glance. Nothing is
+// lost to the magnification: these are DOM nodes, not a bitmap.
+const CLOSE_ZOOM = 1.25;
+
+// Centre a set of nodes in the canvas, leaving a margin on every side. The
+// caller's ceiling on zoom is what separates the opening view from the
+// whole-graph view: one leans in, the other never magnifies.
+function fitNodes(
+  ids: string[],
   positions: Map<string, { x: number; y: number }>,
   sizes: { id: string; width: number; height: number }[],
   box: { width: number; height: number } | undefined,
   margin: number,
+  maxZoom: number,
 ) {
   if (!box) return null;
 
+  const wanted = new Set(ids);
   const placed = sizes.flatMap((s) => {
     const at = positions.get(s.id);
-    return at ? [{ ...s, ...at }] : [];
+    return wanted.has(s.id) && at ? [{ ...s, ...at }] : [];
   });
   if (placed.length === 0) return null;
 
-  // By centre, not by left edge: dagre gives a rank one centre line, and the
-  // corners it returns are that centre minus each node's own half-width.
-  const centre = (n: (typeof placed)[number]) => n.x + n.width / 2;
-  const first = Math.min(...placed.map(centre));
-  const rank = placed.filter((n) => centre(n) <= first + 1);
-
-  const left = Math.min(...rank.map((n) => n.x));
-  const top = Math.min(...rank.map((n) => n.y));
-  const bottom = Math.max(...rank.map((n) => n.y + n.height));
+  const left = Math.min(...placed.map((n) => n.x));
+  const right = Math.max(...placed.map((n) => n.x + n.width));
+  const top = Math.min(...placed.map((n) => n.y));
+  const bottom = Math.max(...placed.map((n) => n.y + n.height));
 
   // Proportional, so a short canvas doesn't spend most of its height on margin.
-  const m = Math.min(margin, box.height * 0.08);
+  const m = Math.min(margin, box.height * 0.08, box.width * 0.08);
   const zoom = Math.max(
     0.35,
-    Math.min(1, (box.height - 2 * m) / (bottom - top)),
+    Math.min(
+      maxZoom,
+      (box.width - 2 * m) / (right - left),
+      (box.height - 2 * m) / (bottom - top),
+    ),
   );
-  return { x: m - left * zoom, y: m - top * zoom, zoom };
+
+  return {
+    x: (box.width - (right - left) * zoom) / 2 - left * zoom,
+    y: (box.height - (bottom - top) * zoom) / 2 - top * zoom,
+    zoom,
+  };
 }
 
 function measure(n: DagFlowNode) {
