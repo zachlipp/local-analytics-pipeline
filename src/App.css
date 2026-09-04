@@ -152,3 +152,10 @@ h1 {
   33%, 100% { transform: rotate(0) scale(1); }
 }
 .wb-pop { animation: wbPop 4.5s ease-in-out infinite; }
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+  color: var(--muted);
+}

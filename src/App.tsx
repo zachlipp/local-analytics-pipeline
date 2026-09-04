@@ -10,6 +10,7 @@ import { PipelineChange } from "@ui/PipelineChange";
 import { Wip } from "@ui/Wip";
 import { DagViz } from "@ui/DagViz";
 import { RunProvider } from "@ui/RunState";
+import { Spinner } from "@ui/Spinner";
 import { usePipeline } from "@ui/usePipeline";
 import { useRoute, type Source, type View } from "@ui/route";
 
@@ -24,6 +25,7 @@ function App() {
     source,
     from,
     errors,
+    loading,
     pending,
     generation,
     offer,
@@ -60,9 +62,29 @@ function App() {
 
       {!route.source && <Landing onStart={start} />}
 
-      {route.source === "custom-pipeline" && !loaded && (
+      {loading && (
+        <div className="loading">
+          <Spinner label="Loading the pipeline" size={28} />
+        </div>
+      )}
+
+      {route.source === "custom-pipeline" && !loaded && !loading && (
         <DagUpload onOffer={offer} messages={errors} />
       )}
+
+      {route.source === "demo-pipeline" &&
+        !loaded &&
+        !loading &&
+        !pending &&
+        errors.length > 0 && (
+          <div className="loading">
+            <ul>
+              {errors.map((m, i) => (
+                <li key={i}>{m}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
       {loaded && (
         // Switching views unmounts the other one, so what the user has done

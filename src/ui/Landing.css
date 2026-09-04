@@ -71,13 +71,21 @@
   margin-top: 2rem;
 }
 
+.landing .demo,
 .custom-pipeline-link,
 .hero-link {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 7rem;
   padding: 0.6rem 1.1rem;
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text);
+  font-family: inherit;
   font-size: 0.95rem;
+  line-height: 1.25;
   text-decoration: none;
 }
 
@@ -427,13 +435,9 @@
 /* Demo button */
 
 .landing .demo {
-  padding: 0.6rem 1.1rem;
-  border: 1px solid var(--text);
-  border-radius: 6px;
+  border-color: var(--text);
   background: var(--text);
   color: var(--bg);
-  font-size: 0.95rem;
-  font: inherit;
   cursor: pointer;
 }
 

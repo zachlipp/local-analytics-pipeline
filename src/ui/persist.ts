@@ -39,9 +39,16 @@ const IDENTITY = "identity";
 
 let connection: Promise<IDBDatabase> | undefined;
 
+// A blocked upgrade fires neither onsuccess nor onerror, so every path here
+// settles the promise or nothing downstream ever resumes.
 function database(): Promise<IDBDatabase> {
   connection ??= new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(DATABASE, 2);
+    const timer = setTimeout(() => reject(new Error("indexedDB.open stalled")), 5000);
+    const done = (settle: () => void) => {
+      clearTimeout(timer);
+      settle();
+    };
     // Guarded rather than unconditional: v1 users arrive here with `results`
     // already made, and creating it twice throws.
     request.onupgradeneeded = () => {
@@ -49,8 +56,14 @@ function database(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
       if (!db.objectStoreNames.contains(META)) db.createObjectStore(META);
     };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.onsuccess = () => done(() => resolve(request.result));
+    request.onerror = () => done(() => reject(request.error));
+    request.onblocked = () =>
+      done(() => reject(new Error("another tab is holding an older database open")));
+  }).catch((cause: unknown) => {
+    // Dropped so a later call retries rather than awaiting a dead promise.
+    connection = undefined;
+    throw cause;
   });
   return connection;
 }

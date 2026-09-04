@@ -2,9 +2,21 @@
  * The spin lives in the SVG rather than a keyframes rule, so dropping this in
  * needs no matching stylesheet entry. It inherits the caller's colour.
  */
-export function Spinner({ label = "Working" }: { label?: string }) {
+export function Spinner({
+  label = "Working",
+  size = 12,
+}: {
+  label?: string;
+  size?: number;
+}) {
   return (
-    <svg width="12" height="12" viewBox="0 0 16 16" role="status" aria-label={label}>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      role="status"
+      aria-label={label}
+    >
       <circle
         cx="8"
         cy="8"

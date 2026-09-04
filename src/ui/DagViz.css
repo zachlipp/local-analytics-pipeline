@@ -26,6 +26,23 @@
   background: var(--dag-canvas);
 }
 
+/* Held back until dagre has placed the nodes, so the stack at the origin never
+   flashes. The spinner sits in its place meanwhile. */
+.dag-viz[data-placed="false"] .dag-viz-toolbar,
+.dag-viz[data-placed="false"] .react-flow {
+  opacity: 0;
+}
+
+.dag-viz-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
 /* Toolbar ---------------------------------------------------------------- */
 
 /* Floats over the canvas, above React Flow's own panes, and out of the way of

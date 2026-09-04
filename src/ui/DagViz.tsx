@@ -301,11 +301,12 @@ function DagFlow({
 
   return (
     <>
-      <div
-        className="dag-viz"
-        ref={container}
-        style={{ opacity: placed ? 1 : 0 }}
-      >
+      <div className="dag-viz" ref={container} data-placed={placed}>
+        {!placed && (
+          <div className="dag-viz-loading">
+            <Spinner label="Laying out the graph" size={28} />
+          </div>
+        )}
         <div className="dag-viz-toolbar">
           <button
             type="button"

@@ -35,6 +35,8 @@ export type Pipeline = {
   /** The route segment the loaded pipeline arrived through. */
   from?: Source;
   errors: string[];
+  /** A source route's bytes are still on their way in. */
+  loading: boolean;
   pending?: Pending;
   /** Bumped when the run store is wiped, to remount RunProvider onto nothing. */
   generation: number;
@@ -45,6 +47,14 @@ export type Pipeline = {
   /** Leave the pending change untaken and keep what is loaded. */
   cancel: () => void;
 };
+
+// The demo's bytes ship in the bundle, so its route can load itself. Upload has
+// nothing to load from in production and waits on the file input.
+function loader(routeSource?: Source) {
+  if (routeSource === "demo-pipeline") return DEMO;
+  if (routeSource === "custom-pipeline") return FIXTURE;
+  return undefined;
+}
 
 /**
  * The store holds one pipeline's work at a time, so loading a second one is a
@@ -59,6 +69,9 @@ export function usePipeline(routeSource?: Source): Pipeline {
   const [errors, setErrors] = useState<string[]>([]);
   const [pending, setPending] = useState<Pending>();
   const [generation, setGeneration] = useState(0);
+  // Seeded from the route so the first paint is the spinner, not the blank
+  // frame the effect would otherwise leave up until it runs.
+  const [loading, setLoading] = useState(() => !!loader(routeSource));
 
   // Read inside callbacks that must stay stable, so the loading effect below
   // doesn't re-fire every time the route object is rebuilt. Declared before
@@ -80,6 +93,7 @@ export function usePipeline(routeSource?: Source): Pipeline {
       setFrom(at.current);
       setPending(undefined);
       setErrors([]);
+      setLoading(false);
     },
     [],
   );
@@ -89,6 +103,7 @@ export function usePipeline(routeSource?: Source): Pipeline {
       const result = parseDag(raw);
       if (!result.ok) {
         setErrors(result.errors);
+        setLoading(false);
         return;
       }
       setErrors([]);
@@ -103,6 +118,7 @@ export function usePipeline(routeSource?: Source): Pipeline {
           return;
         }
         setPending({ change: verdict, dag: result.dag, source: raw });
+        setLoading(false);
       })();
     },
     [commit],
@@ -128,24 +144,23 @@ export function usePipeline(routeSource?: Source): Pipeline {
 
   const cancel = useCallback(() => setPending(undefined), []);
 
-  // The demo's bytes ship in the bundle, so its route can load itself. Upload
-  // has nothing to load from in production and waits on the file input.
   useEffect(() => {
-    const load =
-      routeSource === "demo-pipeline"
-        ? DEMO
-        : routeSource === "custom-pipeline"
-          ? FIXTURE
-          : undefined;
-    if (!load) return;
+    const load = loader(routeSource);
+    if (!load) {
+      setLoading(false);
+      return;
+    }
 
     let live = true;
+    setLoading(true);
     void load()
       .then((module) => {
         if (live) offer(module.default);
       })
       .catch((cause: unknown) => {
-        if (live) setErrors([cause instanceof Error ? cause.message : String(cause)]);
+        if (!live) return;
+        setErrors([cause instanceof Error ? cause.message : String(cause)]);
+        setLoading(false);
       });
     return () => {
       live = false;
@@ -157,6 +172,7 @@ export function usePipeline(routeSource?: Source): Pipeline {
     source,
     from,
     errors,
+    loading,
     pending,
     generation,
     offer,
