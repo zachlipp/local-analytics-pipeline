@@ -1,4 +1,6 @@
+import { checkUnique, duplicateMessage, uniqueColumns } from "./constraints";
 import { SEARCHABLE, toCsv } from "./csv";
+import { fixOf } from "./fix";
 import { entriesToCsv, toRecords } from "./dataEntry";
 import { literalRecordsToCsv } from "./dataLiteral";
 import { literal, quote, type Engine } from "./engine";
@@ -7,6 +9,7 @@ import { literalCsv, planRun, type RunTask } from "./runner";
 import type { Dag, Schemas } from "./schema";
 import {
   checkDeclaredColumns,
+  declaredSchema,
   declaredTypes,
   undeclaredColumns,
 } from "./shapes";
@@ -46,7 +49,12 @@ export async function runPipeline(
 
   for (const task of planRun(pipeline, dag, target)) {
     const id = task.node.id;
-    report(id, { running: true, error: undefined, invalid: undefined });
+    report(id, {
+      running: true,
+      error: undefined,
+      invalid: undefined,
+      violations: undefined,
+    });
 
     try {
       const { rows, dropped } = await materialize(
@@ -55,6 +63,25 @@ export async function runPipeline(
         results,
         dag.schemas,
       );
+
+      // The table built, so it is kept and can still be queried; what is wrong
+      // is the rows in it. INVALID rather than ERROR, and status.ts blocks
+      // everything below either way.
+      const unique = uniqueColumns(declaredSchema(task.node, dag.schemas));
+      const found = await checkUnique(engine, task.name, unique);
+      if (found) {
+        const invalid = duplicateMessage(task.name, found, fixOf(task.node)?.node);
+        report(id, {
+          running: false,
+          table: task.name,
+          rows,
+          dropped,
+          invalid,
+          violations: found.rows,
+        });
+        return { ok: false, ran, failed: task.name, error: invalid };
+      }
+
       report(id, { running: false, table: task.name, rows, dropped });
       ran.set(task.name, rows);
     } catch (cause) {

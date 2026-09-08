@@ -1,11 +1,26 @@
+import { useEffect, useRef } from "react";
+
 import "./EditableDataLiteral.css";
 
 import type { DataLiteralNode } from "@core/schema";
 import { useDataLiteral } from "./useDataLiteral";
 
 // DataLiteral's editable counterpart, mounted only from the slide view.
-export function EditableDataLiteral({ node }: { node: DataLiteralNode }) {
+export function EditableDataLiteral({
+  node,
+  // The row a click on a failing record just started or found, marked and
+  // scrolled to: appended rows land at the bottom, out of a short pane's view.
+  highlight,
+}: {
+  node: DataLiteralNode;
+  highlight?: number;
+}) {
   const editor = useDataLiteral(node);
+  const marked = useRef<HTMLTableRowElement>(null);
+
+  useEffect(() => {
+    marked.current?.scrollIntoView({ block: "nearest" });
+  }, [highlight]);
 
   return (
     <div className="literal-editor">
@@ -23,7 +38,11 @@ export function EditableDataLiteral({ node }: { node: DataLiteralNode }) {
           <tbody>
             {editor.records.map((record, i) => (
               // Rows carry no id of their own; the list's order is the identity.
-              <tr key={i}>
+              <tr
+                key={i}
+                ref={i === highlight ? marked : undefined}
+                className={i === highlight ? "literal-row-marked" : undefined}
+              >
                 {editor.columns.map((column) => (
                   <td key={column}>
                     <input

@@ -1,11 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 import "./DagSlides.css";
 
 import { buildPipeline, type Pipeline } from "@core/pipeline";
 import { csvRows, SEARCHABLE, searchLabel, searchRows } from "@core/csv";
+import { editableFix, fixRecord, type Fix } from "@core/fix";
 import { scriptPath } from "@core/scripts";
-import type { Dag, Node, ScriptNode } from "@core/schema";
+import type { Dag, DataLiteralNode, Node, ScriptNode } from "@core/schema";
 import { nodeStatuses } from "@core/status";
 import { DataEntry } from "./DataEntry";
 import { debug } from "./debug";
@@ -18,6 +25,7 @@ import { SourceLink } from "./SourceLink";
 import { Spinner } from "./Spinner";
 import { StatusBadge } from "./StatusBadge";
 import { useFileUpload } from "./useFileUpload";
+import { useDataLiteral } from "./useDataLiteral";
 import { useRunPipeline } from "./useRunPipeline";
 import { useScript, type ScriptResult } from "./useScript";
 
@@ -123,6 +131,7 @@ export function DagSlides({
           )}
 
           <DroppedColumns id={step.node.id} />
+          <Violations node={step.node} fix={editableFix(dag, step.node)} />
 
           <SlideControl
             // Remounts on every slide, which is what clears a half-finished
@@ -173,6 +182,122 @@ function DroppedColumns({ id }: { id: string }) {
         : `Ignored ${dropped.length} columns this node's schema does not declare: ${list(dropped)}.`}{" "}
       They are not in the table and cannot be queried. Add them to the schema to
       keep them.
+    </div>
+  );
+}
+
+/**
+ * Rows that broke a constraint, on the node they came from.
+ *
+ * When the node named a `fix:` that can be edited here, the two are put side by
+ * side. Reading the duplicates in one window and correcting them in another is
+ * the whole job, and doing it from memory is how the wrong row gets fixed. The
+ * panes scroll independently so a long grid and a long table of offenders don't
+ * fight over the page.
+ */
+function Violations({ node, fix }: { node: Node; fix?: Fix }) {
+  const [result] = useNodeResult(node.id);
+  const rows = result.violations ?? [];
+  if (!result.invalid || rows.length === 0) return null;
+
+  return (
+    <>
+      <div className="dag-slide-error">{result.invalid}</div>
+      {fix ? (
+        <FixSplit fix={fix} rows={rows} table={result.table} />
+      ) : (
+        <TableBody columns={Object.keys(rows[0])} rows={rows} />
+      )}
+    </>
+  );
+}
+
+// A data_entry's rows come from its input table, so there is nothing for a
+// mapping to start there — its half of the split is the grid and no more.
+function FixSplit({
+  fix,
+  rows,
+  table,
+}: {
+  fix: Fix;
+  rows: Row[];
+  table?: string;
+}) {
+  if (fix.node.kind === "data_literal") {
+    return (
+      <LiteralFixSplit fix={fix} node={fix.node} rows={rows} table={table} />
+    );
+  }
+  return (
+    <Split
+      name={fix.name}
+      rows={rows}
+      table={table}
+      editor={<DataEntry node={fix.node} table={fix.name} />}
+    />
+  );
+}
+
+// Clicking a failing record starts the row that corrects it, with the mapped
+// columns already filled — the rest is the author's judgement. Clicking the
+// same record twice finds the row it made the first time rather than stacking
+// another, which is why `append` reports where it landed either way.
+function LiteralFixSplit({
+  fix,
+  node,
+  rows,
+  table,
+}: {
+  fix: Fix;
+  node: DataLiteralNode;
+  rows: Row[];
+  table?: string;
+}) {
+  const editor = useDataLiteral(node);
+  const [marked, setMarked] = useState<number>();
+  const mapped = Object.keys(fix.keys).length > 0;
+
+  const start = useCallback(
+    (row: Row) => setMarked(editor.append(fixRecord(fix.keys, row, editor.columns))),
+    [editor, fix.keys],
+  );
+
+  return (
+    <Split
+      name={fix.name}
+      rows={rows}
+      table={table}
+      onFix={mapped ? start : undefined}
+      editor={<EditableDataLiteral node={node} highlight={marked} />}
+    />
+  );
+}
+
+function Split({
+  name,
+  rows,
+  table,
+  editor,
+  onFix,
+}: {
+  name: string;
+  rows: Row[];
+  table?: string;
+  editor: ReactNode;
+  onFix?: (row: Row) => void;
+}) {
+  return (
+    <div className="dag-slide-split">
+      <section className="dag-slide-pane">
+        <h3 className="dag-slide-pane-title">{name}</h3>
+        {editor}
+      </section>
+      <section className="dag-slide-pane">
+        <h3 className="dag-slide-pane-title">
+          {rows.length} of them, in <code>{table}</code>
+        </h3>
+        <TableBody columns={Object.keys(rows[0])} rows={rows} onFix={onFix} />
+      </section>
     </div>
   );
 }
@@ -305,7 +430,9 @@ function OperationControl({
           searchColumns={searchColumns}
         />
       )}
-      {error && <div className="dag-slide-error">{error}</div>}
+      {error && !result.invalid && (
+        <div className="dag-slide-error">{error}</div>
+      )}
     </>
   );
 }
@@ -420,12 +547,23 @@ function TablePreview({
   );
 }
 
-function TableBody({ columns, rows }: { columns: string[]; rows: Row[] }) {
+function TableBody({
+  columns,
+  rows,
+  // Present only where a `fix:` maps columns: one button per row rather than a
+  // clickable row, so the table stays selectable text and reachable by keyboard.
+  onFix,
+}: {
+  columns: string[];
+  rows: Row[];
+  onFix?: (row: Row) => void;
+}) {
   return (
     <div className="dag-slide-preview">
       <table>
         <thead>
           <tr>
+            {onFix && <th className="dag-slide-fix-cell" />}
             {columns.map((column) => (
               <th key={column}>{column}</th>
             ))}
@@ -435,6 +573,18 @@ function TableBody({ columns, rows }: { columns: string[]; rows: Row[] }) {
           {rows.map((row, i) => (
             // Result rows carry no id, and nothing reorders a read-only table.
             <tr key={i}>
+              {onFix && (
+                <td className="dag-slide-fix-cell">
+                  <button
+                    type="button"
+                    className="dag-slide-fix"
+                    onClick={() => onFix(row)}
+                    aria-label={`Start a fix for row ${i + 1}`}
+                  >
+                    Fix
+                  </button>
+                </td>
+              )}
               {columns.map((column) => (
                 <td key={column}>
                   {row[column] ?? <span className="dag-slide-null">null</span>}

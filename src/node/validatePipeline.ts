@@ -7,6 +7,7 @@ import {
   type ProblemKind,
 } from "@core/checkInputs";
 import { checkReads, type ReadProblem } from "@core/checkReads";
+import { checkFix, type FixProblem } from "@core/fix";
 import { buildPipeline } from "@core/pipeline";
 import { DagSchema } from "@core/schema";
 import { checkSchemas, type SchemaError } from "@core/schemaErrors";
@@ -107,6 +108,7 @@ async function main(): Promise<number> {
     const schemaErrors = checkSchemas(dag.schemas);
     const scripts = missingScripts(dag);
     const reads = checkReads(dag, report.built);
+    const debugTargets = checkFix(dag, report.built);
     const byKind = (...kinds: ProblemKind[]) =>
       drifted.filter((problem) => kinds.includes(problem.kind));
 
@@ -115,7 +117,8 @@ async function main(): Promise<number> {
       drifted.length +
       schemaErrors.length +
       scripts.length +
-      reads.length;
+      reads.length +
+      debugTargets.length;
     const blockedNames = report.blocked.map(
       (issue) => issue.operation ?? issue.node,
     );
@@ -139,6 +142,7 @@ async function main(): Promise<number> {
     group("Schema Errors", schemaErrors.map(fromSchema), verbose);
     group("Missing Scripts", scripts.map(fromScript), verbose);
     group("Input Columns", reads.map(fromReads), verbose);
+    group("Debug Targets", debugTargets.map(fromFix), verbose);
     group("Undeclared Inputs", byKind("undeclared", "unknown_node", "not_a_table").map(fromInput), verbose);
     group("Unused Declarations", byKind("unused").map(fromInput), verbose);
     group("Other", byKind("qualified", "self_reference", "walker").map(fromInput), verbose);
@@ -201,6 +205,21 @@ function fromReads(problem: ReadProblem): Finding {
     subject: problem.node,
     summary: `${problem.input} has no ${names}`,
     detail: `This node reads ${names} from \`${problem.input}\`, which has: ${problem.available.join(", ")}.\n${fix}`,
+  };
+}
+
+const fixSummary: Record<FixProblem["kind"], (names: string) => string> = {
+  unknown_node: (names) => `No node called ${names}`,
+  not_editable: (names) => `${names} has no rows to add`,
+  missing_target: (names) => `The fix node has no ${names}`,
+  missing_source: (names) => `This node has no ${names}`,
+};
+
+function fromFix(problem: FixProblem): Finding {
+  return {
+    subject: problem.node,
+    summary: fixSummary[problem.kind](problem.names.join(", ")),
+    detail: problem.message,
   };
 }
 

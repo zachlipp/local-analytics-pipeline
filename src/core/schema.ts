@@ -24,10 +24,26 @@ export const NodeInput = Identified.extend({
   name: z.string(),
 });
 
+// Where to go when this node's rows break a constraint, and how to get there.
+// Left out, the error says to fix the data at its source. It is not an input:
+// nothing about the run order changes.
+export const FixTarget = z.object({
+  // The node to edit. A data_literal or a data_entry puts that node's grid
+  // beside the offending rows, because those are the two kinds a person can
+  // correct without leaving the page; anything else is only named in the error.
+  node: z.string(),
+  // Column in the fix node to the offending row's column it is filled from.
+  // With one, an offending row can be clicked to start the record correcting it.
+  keys: z.record(z.string(), z.string()).default({}),
+});
+
+const fix = FixTarget.optional();
+
 const FileNode = Described.extend({
   kind: z.literal("file"),
   // TODO: Implement schema matching
   schema: z.string().optional(),
+  fix,
   // Used if CORS prevents direct download (e.g. the IRS)
   source: z.url().optional(),
   // Written to <node>.csv in the export zip, if this node has a table.
@@ -71,8 +87,12 @@ const UserDataEntryNode = Described.extend({
   }
 });
 
+// The columns are whatever the query produces and are never declared here; a
+// schema on this node names only the constraints its output has to satisfy.
 const OperationResultNode = Described.extend({
   kind: z.literal("operation_result"),
+  schema: z.string().optional(),
+  fix,
   export: z.boolean().default(false),
 });
 
@@ -95,6 +115,7 @@ const ScriptNode = Described.extend({
   // Declared when the script returns rows, so they can be loaded and queried.
   // Omitted when it returns a document, which has no columns and no table.
   schema: z.string().optional(),
+  fix,
   // Recorded by hand, for a reader who wants to know what leaves the machine.
   // Nothing verifies it.
   network: z.boolean().default(false),
@@ -174,4 +195,5 @@ export type ScriptNode = Extract<Node, { kind: "script" }>;
 export type DataEntryNode = Extract<Node, { kind: "data_entry" }>;
 export type DataLiteralNode = Extract<Node, { kind: "data_literal" }>;
 export type Operation = z.infer<typeof OperationSchema>;
+export type FixTarget = z.infer<typeof FixTarget>;
 export type Schemas = Dag["schemas"];

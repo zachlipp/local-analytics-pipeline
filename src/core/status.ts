@@ -1,4 +1,5 @@
 import type { LiteralRecord } from "./dataLiteral";
+import type { Row } from "./engine";
 import type { Pipeline, PipelineNode, PipelineStep } from "./pipeline";
 
 export type Status =
@@ -22,6 +23,8 @@ export type NodeResult = {
   error?: string;
   /** Why the value it holds isn't usable, once anything checks. */
   invalid?: string;
+  /** The rows that made it unusable. They are the error, not evidence for it. */
+  violations?: Row[];
   /** A file the user handed over. */
   file?: { name: string; text: string };
   /** Text the user typed, or a request's response. */

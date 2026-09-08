@@ -1,3 +1,4 @@
+import { columnTypes, uniqueColumns } from "./constraints";
 import { csvColumns } from "./csv";
 import { frozenColumns } from "./dataEntry";
 import { statement, type Engine } from "./engine";
@@ -82,6 +83,14 @@ export async function materializeShapes(
       try {
         const columns = await bind(engine, name, query);
         built.set(name, columns);
+        const absent = missingUnique(node, dag.schemas, columns);
+        if (absent.length > 0) {
+          issues.push({
+            node: name,
+            operation: operationName,
+            message: `Declares ${list(absent)} unique\nIts schema constrains ${list(absent)}, which this query does not select. Add the column, or take it out of the schema.`,
+          });
+        }
       } catch (cause) {
         unavailable.add(name);
         issues.push({
@@ -186,13 +195,26 @@ export function declaredTypes(
 ): Columns | undefined {
   switch (node.kind) {
     case "file":
-    case "script":
-      return node.schema ? schemas[node.schema] : undefined;
+    case "script": {
+      const declared = node.schema ? schemas[node.schema] : undefined;
+      return declared && columnTypes(declared);
+    }
     case "operation_result":
       return undefined;
     default:
       return nodeShape(node, schemas);
   }
+}
+
+// The schema a node names, exactly as written — constraints and all. Unlike
+// declaredTypes this is not something to hand DuckDB; it is what the row checks
+// read. An operation_result names one for those checks alone.
+export function declaredSchema(
+  node: Node,
+  schemas: Schemas,
+): Columns | undefined {
+  if (!("schema" in node) || !node.schema) return undefined;
+  return schemas[node.schema];
 }
 
 // The columns a node declares for itself, or undefined when it has no table at
@@ -256,7 +278,14 @@ function declaredShape(
     );
   }
 
-  return { ...declared };
+  return columnTypes(declared);
+}
+
+// A unique column the query never produces. The constraint cannot be checked,
+// and the schema is claiming something about a column nothing has.
+function missingUnique(node: Node, schemas: Schemas, built: Columns): string[] {
+  const declared = uniqueColumns(declaredSchema(node, schemas));
+  return declared.filter((column) => !(column in built));
 }
 
 function allText(columns: string[]): Columns {

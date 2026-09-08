@@ -5,6 +5,7 @@ import {
   literalRecords,
   type LiteralRecord,
 } from "@core/dataLiteral";
+import { sameFields } from "@core/fix";
 import { literalColumns } from "@core/runner";
 import type { DataLiteralNode } from "@core/schema";
 import { useNodeResult } from "./RunState";
@@ -17,6 +18,9 @@ export type DataLiteralEditor = {
   records: LiteralRecord[];
   setField: (index: number, column: string, value: string) => void;
   add: () => void;
+  // A row with some fields already filled, appended at the end. Returns where
+  // it went, or where the row saying the same thing already was.
+  append: (record: LiteralRecord) => number;
   remove: (index: number) => void;
 };
 
@@ -37,9 +41,28 @@ export function useDataLiteral(node: DataLiteralNode): DataLiteralEditor {
     [records, report],
   );
 
+  const append = useCallback(
+    (record: LiteralRecord) => {
+      // An empty record says nothing, so every row matches it. That is the
+      // Add row button, which always wants a new one.
+      const filled = Object.keys(record).length > 0;
+      const at = filled
+        ? records.findIndex((row) => sameFields(row, record))
+        : -1;
+      if (at !== -1) return at;
+      report({
+        literal: [...records, { ...blankLiteralRecord(node), ...record }],
+      });
+      return records.length;
+    },
+    [records, report, node],
+  );
+
+  // Wrapped rather than passed straight to onClick, which would hand `append`
+  // a MouseEvent to merge into the row.
   const add = useCallback(() => {
-    report({ literal: [...records, blankLiteralRecord(node)] });
-  }, [records, report, node]);
+    append({});
+  }, [append]);
 
   const remove = useCallback(
     (index: number) => {
@@ -48,5 +71,5 @@ export function useDataLiteral(node: DataLiteralNode): DataLiteralEditor {
     [records, report],
   );
 
-  return { columns, records, setField, add, remove };
+  return { columns, records, setField, add, append, remove };
 }
