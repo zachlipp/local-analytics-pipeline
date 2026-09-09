@@ -40,7 +40,11 @@ export function useScript(
       ]);
 
       const input = await queryRows(`SELECT * FROM ${quote(node.input)}`);
-      const output = await script({ input, options: node.options });
+      const output = await script({
+        input,
+        options: node.options,
+        secrets: node.secrets,
+      });
 
       if (isDocument(output)) {
         setResult({ document: output });

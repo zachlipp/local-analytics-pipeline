@@ -24,6 +24,8 @@ export type ScriptContext = {
   input: Rows;
   // The node's `options:`, already expanded from an option set if it named one.
   options: string[];
+  // The node's `secrets:`, by name. Empty when the node declared none.
+  secrets: Record<string, string>;
 };
 
 export type ScriptOutput = Rows | ScriptDocument;
@@ -47,6 +49,18 @@ export type Selected<R extends string, O extends string = never> = Record<
   string
 > &
   Partial<Record<O, string>>;
+
+// A secret a script cannot run without. Missing, it fails here naming the node
+// field to fill in, rather than as an empty `key=` in a request URL.
+export function secret(secrets: Record<string, string>, name: string): string {
+  const value = text(secrets[name]);
+  if (value === "") {
+    throw new Error(
+      `This node needs a value for ${name} under its \`secrets:\`. Add it to the pipeline description and run again.`,
+    );
+  }
+  return value;
+}
 
 // How many offending rows to name before the message stops being worth reading.
 const NAMED_ROWS = 10;

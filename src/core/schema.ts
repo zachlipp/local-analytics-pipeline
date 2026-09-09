@@ -112,6 +112,9 @@ const ScriptNode = Described.extend({
   // Input columns the script is handed as a set rather than one at a time.
   // Written inline or as the name of an option set, like a data_entry node's.
   options: z.array(z.string()).default([]),
+  // Values the script needs that no upstream node can supply — an API key, a
+  // token. Handed to it by name as `context.secrets`.
+  secrets: z.record(z.string(), z.string()).default({}),
   // Declared when the script returns rows, so they can be loaded and queried.
   // Omitted when it returns a document, which has no columns and no table.
   schema: z.string().optional(),
