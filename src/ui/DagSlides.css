@@ -177,6 +177,36 @@
   font-size: 0.8rem;
 }
 
+/* What a running script has said about itself. Newest first, so the line that
+   matters is at the top and the box never has to be scrolled to follow along. */
+.dag-slide-log {
+  max-width: min(32rem, 100%);
+  margin: 0.5rem auto 0;
+  text-align: left;
+  font-size: 0.8rem;
+}
+
+.dag-slide-log-latest {
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--mono);
+}
+
+.dag-slide-log-lines {
+  max-height: 8rem;
+  margin: 0.4rem 0 0;
+  padding: 0 0 0 0.7rem;
+  overflow-y: auto;
+  color: var(--muted);
+  font-family: var(--mono);
+  list-style: none;
+}
+
+.dag-slide-log-lines li {
+  padding: 0.1rem 0;
+}
+
 /* An operation's first rows. A result table can be far wider than the slide,
    so it scrolls sideways inside its own box rather than stretching one. */
 .dag-slide-search-bar {

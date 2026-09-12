@@ -17,15 +17,22 @@ export type LoadedFile = { name: string; text: string };
  * A file arrives one of two ways: picked through the hidden input, or dropped
  * on the control. Spread `drop` onto whatever element should accept one.
  */
-export function useFileUpload(report: (patch: NodeResult) => void) {
+export function useFileUpload(
+  report: (patch: NodeResult) => void,
+  check?: (text: string) => string | undefined,
+) {
   const [dragging, setDragging] = useState(false);
 
   async function read(picked: File) {
     report({ running: true, error: undefined });
     try {
+      const text = await picked.text();
+      // The file is kept even when it's wrong: the error names the columns it
+      // has, and the preview under it shows the rows they came from.
       report({
         running: false,
-        file: { name: picked.name, text: await picked.text() },
+        file: { name: picked.name, text },
+        error: check?.(text),
       });
     } catch (cause) {
       report({

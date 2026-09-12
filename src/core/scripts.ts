@@ -26,6 +26,10 @@ export type ScriptContext = {
   options: string[];
   // The node's `secrets:`, by name. Empty when the node declared none.
   secrets: Record<string, string>;
+  // A line for whoever is watching the node run. Shown beside it while the
+  // script is running and thrown away afterwards: this is for a person waiting
+  // on a slow job, not a record of what happened.
+  progress: (message: string) => void;
 };
 
 export type ScriptOutput = Rows | ScriptDocument;

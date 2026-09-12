@@ -28,10 +28,18 @@ export function useScript(
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string>();
   const [result, setResult] = useState<ScriptResult>();
+  const [log, setLog] = useState<string[]>([]);
+
+  // Capped, so a script that reports once a row cannot grow the DOM without
+  // bound on an input of any size. The oldest lines go first.
+  function progress(message: string) {
+    setLog((lines) => [...lines, message].slice(-LOG_LINES));
+  }
 
   async function run() {
     setRunning(true);
     setError(undefined);
+    setLog([]);
     report({ running: true, error: undefined });
     try {
       const [script, { queryRows, loadCsv, quote }] = await Promise.all([
@@ -44,6 +52,7 @@ export function useScript(
         input,
         options: node.options,
         secrets: node.secrets,
+        progress,
       });
 
       if (isDocument(output)) {
@@ -79,8 +88,11 @@ export function useScript(
     }
   }
 
-  return { running, error, result, run };
+  return { running, error, result, log, run };
 }
+
+// How many progress lines to keep.
+const LOG_LINES = 200;
 
 // Every key any row carries, so a script that omits a field on one row still
 // produces a rectangular CSV.

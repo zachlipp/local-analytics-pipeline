@@ -24,6 +24,11 @@ import { constructEdges } from "@core/graph";
 import { layout, type Direction, type LayoutEdge } from "@core/layout";
 import { buildPipeline } from "@core/pipeline";
 import type { Dag, Node } from "@core/schema";
+import {
+  checkDeclaredColumns,
+  declaredTypes,
+  type Columns,
+} from "@core/shapes";
 import { nodeStatuses, type Status } from "@core/status";
 import { DataLiteral } from "./DataLiteral";
 import { useRoute } from "./route";
@@ -40,6 +45,8 @@ type DagNodeData = {
   literal?: Extract<Node, { kind: "data_literal" }>["data"];
   /** Where a file node's file comes from, if the pipeline says. */
   source?: string;
+  /** The columns a file node's schema declares, checked at upload. */
+  types?: Columns;
   /** Injected at render time, not built with the node — it changes per run. */
   status?: Status;
 };
@@ -377,7 +384,9 @@ function DagFlowNodeView({
   // the same node, and the status badge is derived from the same fact.
   const [result, report] = useNodeResult(id);
   const { file, running: uploading, error } = result;
-  const { dragging, onChange, drop } = useFileUpload(report);
+  const { dragging, onChange, drop } = useFileUpload(report, (text) =>
+    checkDeclaredColumns(data.name, data.types, text),
+  );
 
   return (
     <div className="dag-node" data-kind={data.kind} data-status={data.status}>
@@ -559,6 +568,7 @@ function toFlowGraph(
         description: node.description,
         literal: node.kind === "data_literal" ? node.data : undefined,
         source: node.kind === "file" ? node.source : undefined,
+        types: node.kind === "file" ? declaredTypes(node, dag.schemas) : undefined,
       },
     }),
   );

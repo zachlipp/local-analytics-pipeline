@@ -13,6 +13,11 @@ import { csvRows, SEARCHABLE, searchLabel, searchRows } from "@core/csv";
 import { editableFix, fixRecord, type Fix } from "@core/fix";
 import { scriptPath } from "@core/scripts";
 import type { Dag, DataLiteralNode, Node, ScriptNode } from "@core/schema";
+import {
+  checkDeclaredColumns,
+  declaredTypes,
+  type Columns,
+} from "@core/shapes";
 import { nodeStatuses } from "@core/status";
 import { DataEntry } from "./DataEntry";
 import { debug } from "./debug";
@@ -324,6 +329,8 @@ function SlideControl({
       return (
         <FileControl
           id={node.id}
+          name={name}
+          types={declaredTypes(node, dag.schemas)}
           source={node.source}
           searchColumns={searchColumns}
         />
@@ -624,16 +631,22 @@ function UserInputControl({
 
 function FileControl({
   id,
+  name,
+  types,
   source,
   searchColumns,
 }: {
   id: string;
+  name: string;
+  types: Columns | undefined;
   source?: string;
   searchColumns: string[];
 }) {
   const [result, report] = useNodeResult(id);
   const { file, running: uploading, error } = result;
-  const { dragging, onChange, drop } = useFileUpload(report);
+  const { dragging, onChange, drop } = useFileUpload(report, (text) =>
+    checkDeclaredColumns(name, types, text),
+  );
 
   return (
     <>
@@ -703,7 +716,7 @@ function ScriptControl({
   schemas: Dag["schemas"];
 }) {
   const [, report] = useNodeResult(node.id);
-  const { running, error, result, run } = useScript(
+  const { running, error, result, log, run } = useScript(
     node,
     table,
     schemas,
@@ -726,9 +739,37 @@ function ScriptControl({
         <code>{scriptPath(node.src)}</code>
         {node.network && " · makes external requests"}
       </div>
+      {log.length > 0 && <ScriptLog log={log} running={running} />}
       {result && <ScriptSummary result={result} />}
       {error && <div className="dag-slide-error">{error}</div>}
     </>
+  );
+}
+
+// What the script has said so far. While it runs, the newest line is the
+// headline and the rest is history; once it stops, the whole thing is history.
+function ScriptLog({ log, running }: { log: string[]; running: boolean }) {
+  const latest = log[log.length - 1];
+  const earlier = log.slice(0, -1);
+
+  return (
+    <div className="dag-slide-log">
+      {running && (
+        <div className="dag-slide-log-latest" aria-live="polite">
+          {latest}
+        </div>
+      )}
+      {(running ? earlier : log).length > 0 && (
+        <ol className="dag-slide-log-lines" reversed>
+          {(running ? earlier : log)
+            .slice()
+            .reverse()
+            .map((line, i) => (
+              <li key={log.length - i}>{line}</li>
+            ))}
+        </ol>
+      )}
+    </div>
   );
 }
 

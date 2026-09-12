@@ -1,20 +1,31 @@
 import {
+  secret,
   select,
   type Rows,
   type ScriptContext,
   type Selected,
 } from "@core/scripts";
 
-const ENDPOINT =
-  "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress";
+const ENDPOINT = "https://us1.locationiq.com/v1/search";
 
-// The address ranges the Census keeps current, rather than a decennial snapshot.
-const BENCHMARK = "Public_AR_Current";
+const API_KEY = "LOCATIONIQ_API_KEY";
 
-// The endpoint sends no CORS headers, so a response cannot be read out of
-// fetch(). It does answer JSONP, and a script tag was never bound by the same
-// origin policy, so that is how these requests go out.
-const TIMEOUT = 20_000;
+// The free tier allows two a second. One is inside that with room to spare,
+// and the daily cap runs out long before the per-second one matters.
+const DELAY = 1_000;
+
+// What to wait after a refusal, in order. Running out of these gives up.
+const BACKOFF = [5_000, 15_000, 45_000];
+
+// Worth retrying. Anything else is our fault and will not fix itself.
+const RETRY = new Set([429, 500, 502, 503, 504]);
+
+// An address LocationIQ cannot place, where Nominatim sent an empty array.
+const NOT_FOUND = 404;
+
+// An honoured Retry-After longer than this is a block rather than a queue, and
+// waiting it out in a browser tab is not a plan.
+const MAX_RETRY_AFTER = 120_000;
 
 // How many bad rows to name before the message stops being worth reading.
 const NAMED = 10;
@@ -28,15 +39,15 @@ type Organization = Selected<
 
 type Located = { row: Organization; address: string };
 
-// Only the fields this reads; a match carries its Tiger line and parsed
-// components as well.
-type CensusResponse = {
-  result?: {
-    addressMatches?: { coordinates?: { x: number; y: number } }[];
-  };
-};
+type Match = { lat?: string; lon?: string };
 
-export default async function geocode({ input }: ScriptContext): Promise<Rows> {
+export default async function geocode({
+  input,
+  secrets,
+  progress,
+}: ScriptContext): Promise<Rows> {
+  const key = secret(secrets, API_KEY);
+
   const rows: Organization[] = select(
     input,
     ["ein"],
@@ -53,62 +64,105 @@ export default async function geocode({ input }: ScriptContext): Promise<Rows> {
   });
 
   // Checked up front, so an input that cannot be geocoded fails before any
-  // request goes out rather than halfway through the batch.
+  // request goes out rather than halfway through the day's quota.
   if (incomplete.length > 0) throw new Error(describe(incomplete));
 
-  const out: Rows = [];
-  for (const { row, address } of located) {
-    const url =
-      `${ENDPOINT}?benchmark=${BENCHMARK}&format=jsonp` +
-      `&address=${encodeURIComponent(address)}`;
-    const body = await jsonp<CensusResponse>(url, address);
+  progress(`${located.length} to geocode, about ${estimate(located.length)}.`);
 
-    // x is longitude and y is latitude, in that order.
-    const point = body.result?.addressMatches?.[0]?.coordinates;
+  const out: Rows = [];
+  let found = 0;
+
+  // One request at a time, with a wait between them, so a large input stays
+  // inside the rate limit without needing to think about concurrency.
+  for (const [i, { row, address }] of located.entries()) {
+    if (i > 0) await sleep(DELAY);
+    progress(`${i + 1} of ${located.length}: ${address}`);
+
+    const match = await lookup(address, key, progress);
+    if (match) found += 1;
+
     out.push({
       ein: row.ein,
       full_address: address,
-      latitude: point ? String(point.y) : "",
-      longitude: point ? String(point.x) : "",
+      latitude: match?.lat ?? "",
+      longitude: match?.lon ?? "",
     });
   }
 
+  progress(`Done. ${found} of ${located.length} placed.`);
   return out;
 }
 
-let pending = 0;
+async function lookup(
+  address: string,
+  key: string,
+  progress: (message: string) => void,
+): Promise<Match | undefined> {
+  const url = new URL(ENDPOINT);
+  url.searchParams.set("key", key);
+  url.searchParams.set("q", address);
+  url.searchParams.set("format", "json");
+  url.searchParams.set("limit", "1");
 
-// A JSONP response is executed, not parsed, so there is no status code to read:
-// a failure arrives as a script error or as nothing at all.
-function jsonp<T>(url: string, address: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const name = `__geocode_jsonp_${(pending += 1)}`;
-    const holder = window as unknown as Record<string, unknown>;
-    const script = document.createElement("script");
+  for (let attempt = 0; ; attempt += 1) {
+    const response = await fetch(url, {
+      headers: { Accept: "application/json" },
+    });
 
-    const timer = setTimeout(() => {
-      finish();
-      reject(new Error(`Geocoding ${address} timed out.`));
-    }, TIMEOUT);
+    if (response.ok) {
+      const [match] = (await response.json()) as Match[];
+      return match;
+    }
+    if (response.status === NOT_FOUND) return undefined;
 
-    function finish() {
-      clearTimeout(timer);
-      delete holder[name];
-      script.remove();
+    const reason = await failure(response);
+    const backoff = BACKOFF[attempt];
+    // The per-second limit clears on its own and the daily one does not, so
+    // only one of the two is worth sitting through.
+    if (!RETRY.has(response.status) || backoff === undefined || daily(reason)) {
+      throw new Error(`Geocoding ${address} failed: ${reason}`);
     }
 
-    holder[name] = (body: T) => {
-      finish();
-      resolve(body);
-    };
-    script.onerror = () => {
-      finish();
-      reject(new Error(`Geocoding ${address} failed: the request did not load.`));
-    };
+    const wait = retryAfter(response) ?? backoff;
+    progress(
+      `${reason}. Waiting ${Math.round(wait / 1000)}s, then trying ${address} again.`,
+    );
+    await sleep(wait);
+  }
+}
 
-    script.src = `${url}&callback=${name}`;
-    document.head.append(script);
-  });
+// LocationIQ says why in the body — "Invalid key", "Rate Limited Day" — which
+// is worth more than the status code on its own.
+async function failure(response: Response): Promise<string> {
+  const body = (await response.json().catch(() => null)) as {
+    error?: string;
+  } | null;
+  return body?.error ? `${response.status} ${body.error}` : `${response.status}`;
+}
+
+function daily(reason: string): boolean {
+  return /\bday\b/i.test(reason);
+}
+
+// Sent in seconds when it is sent at all. The HTTP-date form is legal too, and
+// ignored here: a date means a long block, which BACKOFF handles better.
+function retryAfter(response: Response): number | undefined {
+  const header = response.headers.get("Retry-After");
+  if (!header) return undefined;
+
+  const seconds = Number(header);
+  if (!Number.isFinite(seconds) || seconds <= 0) return undefined;
+  return Math.min(seconds * 1_000, MAX_RETRY_AFTER);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function estimate(count: number): string {
+  const minutes = Math.ceil((count * DELAY) / 60_000);
+  if (minutes < 1) return "under a minute";
+  return `${minutes} minute${minutes === 1 ? "" : "s"} if nothing throttles us`;
 }
 
 // A street on its own places nothing, so a locality of some kind is required
