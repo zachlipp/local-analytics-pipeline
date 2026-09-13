@@ -1,0 +1,130 @@
+.cs {
+  position: relative;
+  width: 100%;
+}
+
+.cs-field {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 2rem;
+  padding: 0.2rem 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  cursor: text;
+}
+
+.cs-field:focus-within {
+  border-color: var(--dag-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dag-accent) 25%, transparent);
+}
+
+.cs-field.cs-invalid {
+  border-color: #b3261e;
+}
+
+.cs-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.1rem 0.15rem 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--dag-accent) 16%, var(--bg));
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.cs-chip button {
+  width: 1.1rem;
+  height: 1.1rem;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: inherit;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cs-chip button:hover,
+.cs-chip button:focus-visible {
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+  outline: none;
+}
+
+.cs-inputwrap {
+  position: relative;
+  flex: 1;
+  min-width: 8ch;
+}
+
+.cs-inputwrap input,
+.cs-ghost {
+  padding: 0.15rem 0.1rem;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.cs-inputwrap input {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  outline: none;
+}
+
+.cs-ghost {
+  position: absolute;
+  inset: 0;
+  color: var(--muted);
+  white-space: pre;
+  pointer-events: none;
+}
+
+/* Fixed: the row container scrolls, and an absolute list would be clipped by it. */
+.cs-list {
+  position: fixed;
+  z-index: 20;
+  max-height: 14rem;
+  margin: 0;
+  padding: 0.25rem;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  box-shadow: var(--dag-shadow-hover);
+  list-style: none;
+}
+
+.cs-list li {
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.cs-list li.cs-active {
+  background: var(--dag-accent);
+  color: #fff;
+}
+
+.cs-list mark {
+  background: none;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cs-error {
+  margin: 0.2rem 0 0;
+  color: #b3261e;
+  font-size: 0.75rem;
+}

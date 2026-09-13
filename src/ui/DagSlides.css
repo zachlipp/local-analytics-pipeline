@@ -79,6 +79,15 @@
   white-space: normal;
 }
 
+.categories-description {
+  max-width: 100rem;
+  max-height: 5rem;
+  overflow-y: scroll;
+  margin: 0.9rem auto 0;
+  color: var(--muted);
+  white-space: normal;
+}
+
 /* One control per slide, centred under the description. */
 .dag-slide-action {
   display: inline-flex;

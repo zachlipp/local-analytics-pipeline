@@ -83,39 +83,14 @@
   cursor: default;
 }
 
-/* Rotated so 20-odd focus areas fit across without a horizontal marathon. */
-.entry-grid th.entry-option {
-  height: 9rem;
-  min-width: 3rem;
-  padding: 0;
-  background: none;
-}
-
-/* Swung up from the cell's bottom-left, so a wrapped line never dips into it. */
-.entry-grid th.entry-option span {
-  position: absolute;
-  bottom: 0.5rem;
-  left: 0.7rem;
-  width: 8rem;
-  transform: rotate(-45deg);
-  transform-origin: 0 100%;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  text-align: left;
-  line-height: 1.2;
-  font-size: 0.75rem;
+.entry-grid th.entry-categories-head {
+  width: 100%;
   letter-spacing: 0.04em;
 }
 
-.entry-grid td {
-  text-align: center;
-}
-
-.entry-grid input[type="checkbox"] {
-  width: 1rem;
-  height: 1rem;
-  cursor: pointer;
-  accent-color: var(--text);
+.entry-grid td.entry-categories {
+  padding: 0.25rem 0.5rem;
+  white-space: normal;
 }
 
 .entry-grid tbody tr:hover th,
@@ -157,7 +132,6 @@
   }
 }
 
-/* Short viewports (landscape phone): the header band is mostly slack above the rotated labels. */
 /* TODO: consolidate breakpoints into one shared rule. */
 @media (max-height: 30rem) {
   .entry {
@@ -166,16 +140,5 @@
 
   .entry-grid {
     max-height: 60vh;
-  }
-
-  .entry-grid th.entry-option {
-    height: 4.5rem;
-  }
-
-  .entry-grid th.entry-option span {
-    bottom: 0.35rem;
-    left: 0.5rem;
-    width: 5rem;
-    font-size: 0.65rem;
   }
 }

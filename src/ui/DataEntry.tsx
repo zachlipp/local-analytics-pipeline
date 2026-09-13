@@ -1,6 +1,7 @@
 import "./DataEntry.css";
 
 import type { DataEntryNode } from "@core/schema";
+import { CategorySelect } from "./CategorySelect";
 import { Spinner } from "./Spinner";
 import { useDataEntry } from "./useDataEntry";
 
@@ -25,13 +26,19 @@ export function DataEntry({
   }
   if (entry.error) return <div className="dag-slide-error">{entry.error}</div>;
   if (entry.records.length === 0) {
-    return <div className="dag-slide-note">{entry.note ?? "Nothing to enter."}</div>;
+    return (
+      <div className="dag-slide-note">{entry.note ?? "Nothing to enter."}</div>
+    );
   }
 
   const offset = (i: number) => ({ left: `${i * FROZEN_REM}rem` });
 
   return (
     <div className="entry">
+      <div className="categories-description">
+        Possible values include: {node.options.join(", ")}
+      </div>
+
       {/* CSS-only: swapped in for .entry-grid on narrow portrait screens. */}
       <div className="entry-rotate-prompt">
         Rotate your phone to landscape to enter data.
@@ -49,11 +56,7 @@ export function DataEntry({
                   {column}
                 </th>
               ))}
-              {node.options.map((option) => (
-                <th key={option} className="entry-option">
-                  <span>{option}</span>
-                </th>
-              ))}
+              <th className="entry-categories-head">categories</th>
             </tr>
           </thead>
 
@@ -86,16 +89,15 @@ export function DataEntry({
                     )}
                   </th>
                 ))}
-                {node.options.map((option) => (
-                  <td key={option}>
-                    <input
-                      type="checkbox"
-                      checked={entry.checked(record.key, option)}
-                      onChange={() => entry.toggle(record.key, option)}
-                      aria-label={`${record.cells[0] || record.key}: ${option}`}
-                    />
-                  </td>
-                ))}
+                <td className="entry-categories">
+                  <CategorySelect
+                    options={node.options}
+                    value={entry.marks[record.key] ?? []}
+                    onToggle={(option) => entry.toggle(record.key, option)}
+                    onFocus={() => entry.select(record.key)}
+                    label={`Categories for ${record.cells[0] || record.key}`}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
