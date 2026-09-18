@@ -113,7 +113,8 @@
   --dag-kind: var(--kind-user-input);
 }
 
-.dag-node[data-kind="operation_result"] {
+.dag-node[data-kind="operation_result"],
+.dag-node[data-kind="circuit_breaker"] {
   --dag-kind: var(--kind-operation-result);
 }
 

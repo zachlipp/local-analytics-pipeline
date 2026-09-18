@@ -1,13 +1,16 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   baseType,
+  checkEmpty,
   checkUnique,
   columnTypes,
   duplicateMessage,
+  emptyMessage,
   uniqueColumns,
 } from "@core/constraints";
 import { buildPipeline } from "@core/pipeline";
 import { runPipeline } from "@core/runPipeline";
+import { planRun } from "@core/runner";
 import { DagSchema, type Dag } from "@core/schema";
 import { materializeShapes } from "@core/shapes";
 import { declaredSchema, declaredTypes } from "@core/shapes";
@@ -224,6 +227,164 @@ describe("a run that breaks a uniqueness constraint", () => {
 
     expect(outcome).toMatchObject({ ok: true });
     expect(patches[parsed.nodes.grantee_records.id].invalid).toBeUndefined();
+  });
+});
+
+describe("checkEmpty", () => {
+  it("says nothing about an empty table", async () => {
+    await engine.loadCsv("none", "ein\n", { ein: "VARCHAR" });
+    expect(await checkEmpty(engine, "none")).toBeUndefined();
+  });
+
+  it("caps the rows but counts them all", async () => {
+    await engine.loadCsv("some", "ein\n1\n2\n3\n", { ein: "VARCHAR" });
+    const found = (await checkEmpty(engine, "some", 2))!;
+    expect(found.count).toBe(3);
+    expect(found.rows).toHaveLength(2);
+    expect(emptyMessage("some", found, "known")).toBe(
+      "“some” has to be empty, but it has 3 rows. The first 2 are below. Fix them in “known”, then run again.",
+    );
+  });
+});
+
+// A file, a literal of bad pairs, a check joining them, and an operation the run targets that never reads the check.
+function checked(): Dag {
+  return DagSchema.parse({
+    pipeline_name: "test",
+    version: "v0.1.0",
+    schemas: { grants: { ein: "VARCHAR", name: "VARCHAR" } },
+    nodes: {
+      grants: { kind: "file", schema: "grants", description: "" },
+      bad: {
+        kind: "data_literal",
+        description: "",
+        data: [{ ein: "1", name: "A" }],
+      },
+      misattributed: {
+        kind: "circuit_breaker",
+        description: "",
+        inputs: ["grants", "bad"],
+        query:
+          "SELECT grants.* FROM grants JOIN bad ON bad.ein = grants.ein AND bad.name = grants.name",
+        fix: { node: "bad" },
+      },
+      totals: { kind: "operation_result", description: "" },
+      report: { kind: "operation_result", description: "" },
+    },
+    operations: {
+      total: {
+        description: "",
+        inputs: ["grants"],
+        output: "totals",
+        query: "SELECT count(*) AS n FROM grants",
+      },
+      summarize: {
+        description: "",
+        inputs: ["totals"],
+        output: "report",
+        query: "SELECT * FROM totals",
+      },
+    },
+  }) as Dag;
+}
+
+async function runChecked(parsed: Dag, csv: string, target?: string) {
+  const patches: Record<string, NodeResult> = {};
+  const outcome = await runPipeline(
+    engine,
+    buildPipeline(parsed),
+    parsed,
+    { [parsed.nodes.grants.id]: { file: { name: "g.csv", text: csv } } },
+    (id, patch) => (patches[id] = { ...patches[id], ...patch }),
+    target,
+  );
+  return { outcome, patches };
+}
+
+describe("parsing a circuit_breaker", () => {
+  it("lifts its query into an operation of the same name", () => {
+    expect(checked().operations.misattributed).toMatchObject({
+      inputs: ["grants", "bad"],
+      output: "misattributed",
+    });
+  });
+
+  it("refuses an operation that already claims it", () => {
+    const raw = {
+      pipeline_name: "t",
+      version: "v0.1.0",
+      nodes: {
+        a: { kind: "data_literal", description: "", data: ["x"] },
+        stop: { kind: "circuit_breaker", description: "", inputs: ["a"], query: "SELECT * FROM a" },
+      },
+      operations: {
+        other: { description: "", inputs: ["a"], output: "stop", query: "SELECT * FROM a" },
+      },
+    };
+    const parsed = DagSchema.safeParse(raw);
+    expect(parsed.success).toBe(false);
+    expect(parsed.error?.issues[0].message).toContain("carries its own query");
+  });
+});
+
+describe("a run with a circuit_breaker", () => {
+  it("fails on the check when it has rows, even running to a node that never reads it", async () => {
+    const parsed = checked();
+    const { outcome, patches } = await runChecked(
+      parsed,
+      "ein,name\n1,A\n1,B\n",
+      "report",
+    );
+
+    expect(outcome).toMatchObject({ ok: false, failed: "misattributed" });
+    const patch = patches[parsed.nodes.misattributed.id];
+    expect(patch.invalid).toContain("“misattributed” has to be empty, but it has 1 row.");
+    expect(patch.invalid).toContain("Fix them in “bad”");
+    expect(patch.violations).toEqual([{ ein: "1", name: "A" }]);
+    expect(patch.table).toBe("misattributed");
+  });
+
+  it("passes when nothing matches", async () => {
+    const parsed = checked();
+    const { outcome, patches } = await runChecked(parsed, "ein,name\n1,B\n", "report");
+
+    expect(outcome).toMatchObject({ ok: true });
+    expect(patches[parsed.nodes.misattributed.id].invalid).toBeUndefined();
+  });
+});
+
+describe("planRun and checks", () => {
+  const names = (target?: string) => {
+    const parsed = checked();
+    return planRun(buildPipeline(parsed), parsed, target).map((task) => task.name);
+  };
+
+  it("runs a check right after its last input", () => {
+    const order = names("report");
+    expect(order).toContain("misattributed");
+    const last = Math.max(order.indexOf("grants"), order.indexOf("bad"));
+    expect(order.indexOf("misattributed")).toBe(last + 1);
+  });
+
+  it("brings along a check input nothing else reads", () => {
+    expect(names("totals")).toEqual(
+      expect.arrayContaining(["grants", "bad", "misattributed", "totals"]),
+    );
+  });
+
+  it("leaves a check out when none of its inputs are being built", () => {
+    const parsed = checked();
+    parsed.operations.total.inputs = [];
+    parsed.operations.total.query = "SELECT 1 AS n";
+    const order = planRun(buildPipeline(parsed), parsed, "report").map((task) => task.name);
+    expect(order).toEqual(["totals", "report"]);
+  });
+
+  it("places it early in a full run too", () => {
+    const order = names();
+    const last = Math.max(order.indexOf("grants"), order.indexOf("bad"));
+    expect(order.indexOf("misattributed")).toBe(last + 1);
+    expect(order).toHaveLength(5);
   });
 });
 

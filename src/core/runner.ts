@@ -1,5 +1,5 @@
 import { toCsv, type CsvRow } from "./csv";
-import type { Pipeline } from "./pipeline";
+import type { Pipeline, PipelineStep } from "./pipeline";
 import type { Dag, DataLiteralNode, Node } from "./schema";
 
 /**
@@ -28,11 +28,18 @@ export function planRun(
   dag: Dag,
   target?: string,
 ): RunTask[] {
-  const needed = target ? ancestors(pipeline, target) : undefined;
+  const needed = target ? withChecks(pipeline, target) : undefined;
+  const checks = pipeline.steps.filter(
+    (step) =>
+      isCheck(step.node) &&
+      step.name !== target &&
+      (!needed || needed.has(step.name)),
+  );
+  const steps = pipeline.steps.filter(
+    (step) => (!needed || needed.has(step.name)) && !checks.includes(step),
+  );
 
-  return pipeline.steps
-    .filter((step) => !needed || needed.has(step.name))
-    .map((step) => {
+  return checksEarly(steps, checks).map((step) => {
       const operation = step.operation
         ? dag.operations[step.operation]
         : undefined;
@@ -45,6 +52,49 @@ export function planRun(
             : undefined,
       };
     });
+}
+
+// Checks feed nothing, so no target needs them; any check reading a built table joins the run, with its own ancestors.
+function withChecks(pipeline: Pipeline, target: string): Set<string> {
+  const needed = ancestors(pipeline, target);
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const step of pipeline.steps) {
+      if (needed.has(step.name) || !isCheck(step.node)) continue;
+      if (!step.inputs.some((input) => needed.has(input))) continue;
+      ancestors(pipeline, step.name).forEach((name) => needed.add(name));
+      grew = true;
+    }
+  }
+  return needed;
+}
+
+export function isCheck(node: Node): boolean {
+  return node.kind === "circuit_breaker";
+}
+
+// Each check goes right after its last input, so a failure stops the run before anything downstream is built.
+function checksEarly(
+  steps: PipelineStep[],
+  checks: PipelineStep[],
+): PipelineStep[] {
+  const order: PipelineStep[] = [];
+  const built = new Set<string>();
+  let waiting = checks;
+
+  const add = (step: PipelineStep) => {
+    order.push(step);
+    built.add(step.name);
+    const ready = waiting.filter((check) =>
+      check.inputs.every((input) => built.has(input)),
+    );
+    waiting = waiting.filter((check) => !ready.includes(check));
+    ready.forEach(add);
+  };
+
+  steps.forEach(add);
+  waiting.forEach(add);
+  return order;
 }
 
 /** A node and everything upstream of it, by name. */

@@ -1,7 +1,8 @@
 // Signatures only — the bodies are yours to fill in. Note that an empty body
 // passes, so these are green until they actually assert something.
+import { buildPipeline } from "@core/pipeline";
 import { DagSchema } from "@core/schema";
-import { describe, test } from "vitest";
+import { describe, expect, test } from "vitest";
 
 /** A DAG whose stages are obvious: two roots -> one result -> one result. */
 function dag() {
@@ -58,7 +59,14 @@ describe("buildPipeline", () => {
   });
 
   test("a branch is walked to its result before the next one starts", () => {
-    dag();
+    const { steps } = buildPipeline(dag());
+    expect(steps.map((s) => s.name)).toEqual([
+      "raw",
+      "year",
+      "cleaned",
+      "summarized",
+      "orphan",
+    ]);
   });
 
   test("stage counts hops from the start, whatever the step order", () => {

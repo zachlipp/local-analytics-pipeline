@@ -200,6 +200,7 @@ export function declaredTypes(
       return declared && columnTypes(declared);
     }
     case "operation_result":
+    case "circuit_breaker":
       return undefined;
     default:
       return nodeShape(node, schemas);
@@ -250,6 +251,7 @@ export function nodeShape(
         : undefined;
 
     case "operation_result":
+    case "circuit_breaker":
       throw new Error("No operation produces this node.");
   }
 }

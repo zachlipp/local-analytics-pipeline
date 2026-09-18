@@ -354,6 +354,9 @@ function SlideControl({
     case "data_literal":
       return <EditableDataLiteral node={node} />;
 
+    case "circuit_breaker":
+      return <BreakerControl node={node} name={name} pipeline={pipeline} dag={dag} />;
+
     case "operation_result":
       return (
         <OperationControl
@@ -388,10 +391,8 @@ function OperationControl({
   searchColumns: string[];
 }) {
   const [result] = useNodeResult(node.id);
-  const { run, running, error, preview, search, query, rows } = useRunPipeline(
-    pipeline,
-    dag,
-  );
+  const { run, running, error, failed, preview, search, query, rows } =
+    useRunPipeline(pipeline, dag);
   const searchTable = useCallback(
     (query: string) => search(name, query, searchColumns),
     [search, name, searchColumns],
@@ -438,9 +439,70 @@ function OperationControl({
         />
       )}
       {error && !result.invalid && (
-        <div className="dag-slide-error">{error}</div>
+        <>
+          <div className="dag-slide-error">{error}</div>
+          {failed !== name && <FailedElsewhere failed={failed} dag={dag} />}
+        </>
       )}
     </>
+  );
+}
+
+// Its offending rows are drawn by Violations above; this only runs it and says when it held.
+function BreakerControl({
+  node,
+  name,
+  pipeline,
+  dag,
+}: Omit<ControlProps, "searchColumns">) {
+  const [result] = useNodeResult(node.id);
+  const { run, running, error, failed } = useRunPipeline(pipeline, dag);
+  const tripped = Boolean(result.invalid);
+
+  return (
+    <>
+      <button
+        className="dag-slide-action"
+        type="button"
+        onClick={() => void run(name)}
+        disabled={running}
+      >
+        {running ? <Spinner label="Running" /> : <RefreshIcon />}
+        {running ? "Running" : result.table === undefined ? "Run" : "Re-run"}
+      </button>
+
+      <div className="dag-slide-note">
+        Stops the run if its query returns any rows.
+      </div>
+
+      {!running && !tripped && result.rows === 0 && (
+        <div className="dag-slide-note">Not tripped. No offending rows.</div>
+      )}
+      {error && failed !== name && (
+        <>
+          <div className="dag-slide-error">{error}</div>
+          <FailedElsewhere failed={failed} dag={dag} />
+        </>
+      )}
+    </>
+  );
+}
+
+// A run stops on the first bad node, which is often not the one whose slide fired it.
+function FailedElsewhere({ failed, dag }: { failed?: string; dag: Dag }) {
+  const { results } = useRun();
+  const [, navigate] = useRoute();
+  const node = failed ? dag.nodes[failed] : undefined;
+  if (!failed || !node || !results[node.id]?.violations?.length) return null;
+
+  return (
+    <button
+      type="button"
+      className="dag-slide-link"
+      onClick={() => navigate({ view: "steps", step: failed })}
+    >
+      See the offending rows in {failed}
+    </button>
   );
 }
 

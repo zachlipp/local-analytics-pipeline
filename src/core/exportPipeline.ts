@@ -78,7 +78,7 @@ function columnOf(source: string, pos: number): number {
 }
 
 export function exportedNodes(dag: Dag): Array<[string, Node]> {
-  return Object.entries(dag.nodes).filter(([, node]) => node.export);
+  return Object.entries(dag.nodes).filter(([, node]) => "export" in node && node.export);
 }
 
 // Edited rows by node name; patchYaml only touches nodes named here.

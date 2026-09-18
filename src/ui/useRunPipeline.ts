@@ -13,6 +13,8 @@ export type RunHandle = {
   run: (target: string) => Promise<void>;
   running: boolean;
   error?: string;
+  // The node the run stopped on, which may not be the target.
+  failed?: string;
   /** The first rows of the target's table, once it has been built. */
   preview?: Row[];
   /** The same first rows, re-queried for the ones matching a search. */
@@ -32,6 +34,7 @@ export function useRunPipeline(pipeline: Pipeline, dag: Dag): RunHandle {
   const { results, update } = useRun();
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string>();
+  const [failed, setFailed] = useState<string>();
   const [preview, setPreview] = useState<Row[]>();
   const [rows, setRows] = useState<number>();
 
@@ -46,6 +49,7 @@ export function useRunPipeline(pipeline: Pipeline, dag: Dag): RunHandle {
     async (target: string) => {
       setRunning(true);
       setError(undefined);
+      setFailed(undefined);
       setPreview(undefined);
       setRows(undefined);
       try {
@@ -60,6 +64,7 @@ export function useRunPipeline(pipeline: Pipeline, dag: Dag): RunHandle {
 
         if (!outcome.ok) {
           setError(`${outcome.failed}: ${outcome.error}`);
+          setFailed(outcome.failed);
           return;
         }
         setRows(outcome.ran.get(target));
@@ -86,5 +91,5 @@ export function useRunPipeline(pipeline: Pipeline, dag: Dag): RunHandle {
     return runQuery(sql);
   }, []);
 
-  return { run, running, error, preview, search, query, rows };
+  return { run, running, error, failed, preview, search, query, rows };
 }

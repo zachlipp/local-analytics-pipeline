@@ -1,11 +1,17 @@
-import { checkUnique, duplicateMessage, uniqueColumns } from "./constraints";
+import {
+  checkEmpty,
+  checkUnique,
+  duplicateMessage,
+  emptyMessage,
+  uniqueColumns,
+} from "./constraints";
 import { SEARCHABLE, toCsv } from "./csv";
 import { fixOf } from "./fix";
 import { entriesToCsv, toRecords } from "./dataEntry";
 import { literalRecordsToCsv } from "./dataLiteral";
-import { literal, quote, type Engine } from "./engine";
+import { literal, quote, type Engine, type Row } from "./engine";
 import type { Pipeline } from "./pipeline";
-import { literalCsv, planRun, type RunTask } from "./runner";
+import { isCheck, literalCsv, planRun, type RunTask } from "./runner";
 import type { Dag, Schemas } from "./schema";
 import {
   checkDeclaredColumns,
@@ -67,19 +73,17 @@ export async function runPipeline(
       // The table built, so it is kept and can still be queried; what is wrong
       // is the rows in it. INVALID rather than ERROR, and status.ts blocks
       // everything below either way.
-      const unique = uniqueColumns(declaredSchema(task.node, dag.schemas));
-      const found = await checkUnique(engine, task.name, unique);
-      if (found) {
-        const invalid = duplicateMessage(task.name, found, fixOf(task.node)?.node);
+      const invalid = await violation(engine, task, dag.schemas);
+      if (invalid) {
         report(id, {
           running: false,
           table: task.name,
           rows,
           dropped,
-          invalid,
-          violations: found.rows,
+          invalid: invalid.message,
+          violations: invalid.rows,
         });
-        return { ok: false, ran, failed: task.name, error: invalid };
+        return { ok: false, ran, failed: task.name, error: invalid.message };
       }
 
       report(id, { running: false, table: task.name, rows, dropped });
@@ -92,6 +96,35 @@ export async function runPipeline(
   }
 
   return { ok: true, ran };
+}
+
+// The first rule this node's table breaks, or nothing.
+async function violation(
+  engine: Engine,
+  task: RunTask,
+  schemas: Schemas,
+): Promise<{ message: string; rows: Row[] } | undefined> {
+  const where = fixOf(task.node)?.node;
+
+  const unique = uniqueColumns(declaredSchema(task.node, schemas));
+  const duplicated = await checkUnique(engine, task.name, unique);
+  if (duplicated) {
+    return {
+      message: duplicateMessage(task.name, duplicated, where),
+      rows: duplicated.rows,
+    };
+  }
+
+  if (isCheck(task.node)) {
+    const offending = await checkEmpty(engine, task.name);
+    if (offending) {
+      return {
+        message: emptyMessage(task.name, offending, where),
+        rows: offending.rows,
+      };
+    }
+  }
+  return undefined;
 }
 
 /** What one node's table cost to build, and what the load had to throw away. */
@@ -162,6 +195,7 @@ async function materialize(
     }
 
     case "operation_result":
+    case "circuit_breaker":
       throw new Error(`No operation produces ${name}.`);
   }
 }

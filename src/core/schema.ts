@@ -96,6 +96,14 @@ const OperationResultNode = Described.extend({
   export: z.boolean().default(false),
 });
 
+// A query whose rows are all violations: any row stops the run. It carries its own operation, lifted out at parse.
+const CircuitBreakerNode = Described.extend({
+  kind: z.literal("circuit_breaker"),
+  inputs: z.array(z.string()),
+  query: z.string(),
+  fix,
+});
+
 // A node whose value comes from JavaScript in this project rather than from a
 // file, a query, or the user. `src` names a module under src/nodes/scripts.
 const ScriptNode = Described.extend({
@@ -158,6 +166,7 @@ export const NodeSchema = z.discriminatedUnion("kind", [
   UserInputNode,
   UserDataEntryNode,
   OperationResultNode,
+  CircuitBreakerNode,
   ScriptNode,
   DataLiteralNode,
 ]);
@@ -171,12 +180,36 @@ const Document = z
     nodes: z.record(z.string(), NodeSchema),
     operations: z.record(z.string(), OperationSchema),
   })
+  .superRefine((dag, ctx) => {
+    for (const [name, node] of Object.entries(dag.nodes)) {
+      if (node.kind !== "circuit_breaker") continue;
+      const clash = Object.entries(dag.operations).find(
+        ([op, { output }]) => op === name || output === name,
+      );
+      if (!clash) continue;
+      ctx.addIssue({
+        code: "custom",
+        path: ["operations", clash[0]],
+        message: `“${name}” is a circuit_breaker, which carries its own query. Remove operation “${clash[0]}” or rename it.`,
+        input: dag.operations[clash[0]],
+      });
+    }
+  })
   // A node's name is the only handle on it that survives an edit, so the id is
   // derived from it. Left random, every re-parse would orphan that node's
   // upload in the run store and its row in IndexedDB.
   .transform((dag) => {
     for (const [name, node] of Object.entries(dag.nodes)) {
       node.id = stableUuid(name);
+      if (node.kind === "circuit_breaker") {
+        dag.operations[name] = {
+          id: stableUuid(`operation:${name}`),
+          description: node.description,
+          inputs: node.inputs,
+          query: node.query,
+          output: name,
+        };
+      }
     }
     return dag;
   });

@@ -125,6 +125,43 @@ export function duplicateMessage(
   where?: string,
 ): string {
   const values = found.values === 1 ? "value" : "values";
+  return (
+    `${quoted(found.column)} has to be unique in ${quoted(table)}, ` +
+    `but ${found.count} rows share ${found.values} ${values} of it.${tail(found, where)}`
+  );
+}
+
+// Rows in a table whose every row is a violation.
+export type Offending = { rows: Row[]; count: number };
+
+export async function checkEmpty(
+  engine: Engine,
+  table: string,
+  limit = LIMIT,
+): Promise<Offending | undefined> {
+  const [totals] = await engine.query(
+    `SELECT count(*) AS n FROM ${quote(table)}`,
+  );
+  const count = Number(totals?.n ?? 0);
+  if (count === 0) return undefined;
+
+  const rows = await engine.query(`SELECT * FROM ${quote(table)} LIMIT ${limit}`);
+  return { rows, count };
+}
+
+export function emptyMessage(
+  table: string,
+  found: Offending,
+  where?: string,
+): string {
+  const rows = found.count === 1 ? "row" : "rows";
+  return (
+    `${quoted(table)} has to be empty, ` +
+    `but it has ${found.count} ${rows}.${tail(found, where)}`
+  );
+}
+
+function tail(found: Offending, where?: string): string {
   const shown =
     found.rows.length < found.count
       ? ` The first ${found.rows.length} are below.`
@@ -132,8 +169,5 @@ export function duplicateMessage(
   const fix = where
     ? `Fix them in ${quoted(where)}, then run again.`
     : `Fix them where the data comes from, then run again.`;
-  return (
-    `${quoted(found.column)} has to be unique in ${quoted(table)}, ` +
-    `but ${found.count} rows share ${found.values} ${values} of it.${shown} ${fix}`
-  );
+  return `${shown} ${fix}`;
 }

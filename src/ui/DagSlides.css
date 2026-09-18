@@ -161,6 +161,19 @@
   font-size: 0.85rem;
 }
 
+.dag-slide-link {
+  display: block;
+  margin-top: 0.25rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 /* URLs are long and have no spaces, so they need a break opportunity or they
    push the slide wider than its frame. */
 .dag-slide-url {
