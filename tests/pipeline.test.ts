@@ -49,6 +49,41 @@ function cyclicDag() {
   });
 }
 
+/** A dag with a circuit breaker */
+function circuitBrokenDag() {
+  return DagSchema.parse({
+    pipeline_name: "test",
+    version: "v0.1.0",
+    nodes: {
+      raw: { kind: "file", description: "" },
+      year: { kind: "user_input", description: "" },
+      cleaned: { kind: "operation_result", description: "" },
+      escape_hatch: {
+        kind: "circuit_breaker",
+        description: "",
+        inputs: ["cleaned", "year"],
+        query: "",
+      },
+      summarized: { kind: "operation_result", description: "" },
+      orphan: { kind: "data_literal", description: "", data: [] },
+    },
+    operations: {
+      clean: {
+        description: "",
+        inputs: ["raw", "year"],
+        output: "cleaned",
+        query: "",
+      },
+      summarize: {
+        description: "",
+        inputs: ["cleaned"],
+        output: "summarized",
+        query: "",
+      },
+    },
+  });
+}
+
 describe("buildPipeline", () => {
   test("every node becomes exactly one step", () => {
     dag();
@@ -59,6 +94,7 @@ describe("buildPipeline", () => {
   });
 
   test("a branch is walked to its result before the next one starts", () => {
+    // tests src/core/pipeline.ts::orderByFlow
     const { steps } = buildPipeline(dag());
     expect(steps.map((s) => s.name)).toEqual([
       "raw",
@@ -83,5 +119,20 @@ describe("buildPipeline", () => {
 
   test("a cycle still yields every node instead of hanging", () => {
     cyclicDag();
+  });
+});
+
+describe("Verify circuit_breaker ordering", () => {
+  test("circuit_breaker comes before inputs", () => {
+    // tests src/core/pipeline.ts::orderByFlow
+    const { steps } = buildPipeline(circuitBrokenDag());
+    expect(steps.map((s) => s.name)).toEqual([
+      "raw",
+      "escape_hatch",
+      "year",
+      "cleaned",
+      "summarized",
+      "orphan",
+    ]);
   });
 });
