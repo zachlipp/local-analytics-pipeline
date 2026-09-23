@@ -42,8 +42,8 @@ export type Pipeline = {
   generation: number;
   /** Hand over pipeline text and let the change rule decide what happens. */
   offer: (raw: string) => void;
-  /** Take the pending change, losing whatever work the store held. */
-  accept: () => void;
+  /** Take the pending change; `keep` carries a hotfix's work instead of wiping it. */
+  accept: (keep?: boolean) => void;
   /** Leave the pending change untaken and keep what is loaded. */
   cancel: () => void;
 };
@@ -124,7 +124,7 @@ export function usePipeline(routeSource?: Source): Pipeline {
     [commit],
   );
 
-  const accept = useCallback(() => {
+  const accept = useCallback((keep = false) => {
     if (!pending) return;
     const hotfix =
       pending.change.kind === "conflict" ? pending.change.hotfix : undefined;
@@ -139,7 +139,8 @@ export function usePipeline(routeSource?: Source): Pipeline {
       setPending(undefined);
       return;
     }
-    void commit(result.dag, raw, true);
+    // Only a hotfix can keep: a replaced pipeline's work has nothing to land on.
+    void commit(result.dag, raw, !(keep && hotfix));
   }, [pending, commit]);
 
   const cancel = useCallback(() => setPending(undefined), []);

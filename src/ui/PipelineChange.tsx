@@ -10,7 +10,7 @@ import type { Pending } from "./usePipeline";
  *
  * It only appears for the two changes that cost the user something: a
  * different pipeline, which discards their work, and a version that never
- * moved, which the app has no safe way to merge.
+ * moved, which needs a hotfix version and a choice to keep or drop the work.
  */
 export function PipelineChange({
   pending,
@@ -23,7 +23,7 @@ export function PipelineChange({
   /** The loaded pipeline, whose work is at stake — not the incoming one. */
   dag?: Dag;
   source?: string;
-  onAccept: () => void;
+  onAccept: (keep?: boolean) => void;
   onCancel: () => void;
 }) {
   const conflict = pending.change.kind === "conflict";
@@ -48,14 +48,15 @@ export function PipelineChange({
               </p>
               <p>
                 Ask whoever sent it to publish this as a new version. Two
-                different pipelines sharing one version number is what makes
-                your entries unsafe to carry over.
+                different pipelines sharing one version number makes it
+                impossible to tell later which one your entries were made for.
               </p>
               {hotfix ? (
                 <p>
                   If you need to keep working now, you can load it as{" "}
-                  <strong>{hotfix}</strong>. Your saved entries are discarded,
-                  so export them first if you want them.
+                  <strong>{hotfix}</strong>, either carrying your saved entries
+                  over by step name or starting fresh. Export first if you
+                  want a copy either way.
                 </p>
               ) : (
                 <p>
@@ -83,9 +84,14 @@ export function PipelineChange({
         </div>
         <div className="completion-actions">
           {dag && <ExportButton dag={dag} source={source} children="Export current work" />}
+          {hotfix && (
+            <button type="button" onClick={() => onAccept(true)}>
+              {`Load as ${hotfix}, keep work`}
+            </button>
+          )}
           {(!conflict || hotfix) && (
-            <button type="button" onClick={onAccept}>
-              {hotfix ? `Load as ${hotfix}` : "Discard and load"}
+            <button type="button" onClick={() => onAccept(false)}>
+              {hotfix ? `Load as ${hotfix}, start fresh` : "Discard and load"}
             </button>
           )}
           <button type="button" onClick={onCancel}>
