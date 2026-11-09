@@ -46,7 +46,7 @@ export default function organizationsAsGeojson({
       name: htmlEscape(row.name ?? ""),
       full_address: htmlEscape(row.full_address ?? ""),
       combined_focuses: htmlEscape(combinedFocuses(row, options)),
-      number_of_grants: String(toInt(row.number_of_grants)),
+      cumulative_grants: String(toInt(row.number_of_grants)),
     };
     for (const focus of options) {
       properties[focus] = toBool(row[focus]) ? "True" : "False";
@@ -98,7 +98,9 @@ function toInt(value: string | undefined): number {
 function toBool(value: string | undefined): boolean {
   if (value === undefined) return false;
   const normalized = value.trim().toLowerCase();
-  return normalized !== "" && normalized !== "0" && normalized !== "false";
+  if (normalized === "" || normalized === "false") return false;
+  const parsed = Number(normalized);
+  return Number.isNaN(parsed) || parsed !== 0;
 }
 
 function dollarFormat(value: string | undefined): string {
