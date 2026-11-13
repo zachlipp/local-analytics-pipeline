@@ -23,7 +23,7 @@ type Organization = Record<string, string | undefined>;
 type Feature = {
   type: "Feature";
   geometry: { coordinates: [number, number]; type: "Point" };
-  properties: Record<string, string>;
+  properties: Record<string, string | string[]>;
 };
 
 export default function organizationsAsGeojson({
@@ -40,20 +40,15 @@ export default function organizationsAsGeojson({
   const features: Feature[] = [];
 
   for (const row of rows) {
-    const properties: Record<string, string> = {
+    const properties: Record<string, string | string[]> = {
       "marker-color": MARKER_COLOR,
       ein: htmlEscape(row.ein ?? ""),
       name: htmlEscape(row.name ?? ""),
       full_address: htmlEscape(row.full_address ?? ""),
-      combined_focuses: htmlEscape(combinedFocuses(row, options)),
       cumulative_grants: String(toInt(row.number_of_grants)),
+      focus_areas: options.filter((focus) => toBool(row[focus])),
+      cumulative_grant_dollars: dollarFormat(row.cumulative_grant_dollars),
     };
-    for (const focus of options) {
-      properties[focus] = toBool(row[focus]) ? "True" : "False";
-    }
-    properties.cumulative_grant_dollars = dollarFormat(
-      row.cumulative_grant_dollars,
-    );
 
     features.push({
       type: "Feature",
@@ -68,21 +63,8 @@ export default function organizationsAsGeojson({
   return {
     filename: "organizations.geojson",
     mediaType: "application/geo+json",
-    body: JSON.stringify({ type: "FeatureCollection", features }, null, 2),
+    body: JSON.stringify({ type: "FeatureCollection", features }),
   };
-}
-
-function combinedFocuses(row: Organization, focuses: string[]): string {
-  return focuses
-    .filter((focus) => toBool(row[focus]))
-    .map((focus) => titleCase(focus.replaceAll("_", " ")))
-    .join(", ");
-}
-
-function titleCase(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[a-z]+/g, (word) => word[0].toUpperCase() + word.slice(1));
 }
 
 function round(value: string | undefined): number {
